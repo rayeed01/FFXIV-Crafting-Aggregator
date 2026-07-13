@@ -1,7 +1,11 @@
 package com.crafting.ffxivcraftingaggregator.repository;
 
-import com.crafting.ffxivcraftingaggregator.domain.entity.Craft;
+import com.crafting.ffxivcraftingaggregator.domain.entity.SavedCraft;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-public interface CraftRepository extends JpaRepository<Craft,Long> {
+import java.util.UUID;
+
+@Repository
+public interface SavedCraftRepository extends JpaRepository<SavedCraft, UUID> {
 }

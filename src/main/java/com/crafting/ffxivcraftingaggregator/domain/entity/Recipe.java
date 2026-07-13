@@ -3,6 +3,8 @@ package com.crafting.ffxivcraftingaggregator.domain.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -10,24 +12,37 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
 @Table(name = "recipes")
-public class Recipes {
+public class Recipe {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
     private UUID id;
 
+    @Column(name = "xivapi_id",nullable = false, unique = true)
     private int xivapiId;
 
-    private UUID resultItemId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "result_item_id")
+    private Item resultItem;
 
+    @Column(nullable = false)
     private int resultQuantity;
 
+    @Column(nullable = false)
     private String craftJob;
 
+    @Column(nullable = false)
     private int level;
 
-    private List<>
+    @Builder.Default
+    @OneToMany(mappedBy = "recipe")
+    private List<RecipeIngredients> recipeIngredients = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "recipe")
+    private List<SavedCraftRecipes> savedCraftRecipes = new ArrayList<>();
 }

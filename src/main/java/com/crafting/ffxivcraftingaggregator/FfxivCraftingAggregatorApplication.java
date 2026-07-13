@@ -6,8 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class FfxivCraftingAggregatorApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(FfxivCraftingAggregatorApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(FfxivCraftingAggregatorApplication.class, args);
+    }
 
 }

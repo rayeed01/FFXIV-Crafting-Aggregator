@@ -1,4 +1,4 @@
 package com.crafting.ffxivcraftingaggregator.domain.dto;
 
-public class AuthResponst {
+public record AuthResponse(String token) {
 }

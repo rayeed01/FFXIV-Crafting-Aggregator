@@ -1,4 +1,4 @@
-package com.crafting.ffxivcraftingaggregator.controller;
+package com.crafting.ffxivcraftingaggregator.exception;
 
 import com.crafting.ffxivcraftingaggregator.domain.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;
