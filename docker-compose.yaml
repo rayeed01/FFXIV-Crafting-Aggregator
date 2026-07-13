@@ -1,0 +1,34 @@
+name: task-app
+
+services:
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: rayeed
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: tasks
+      PGDATA: /data/postgres
+    volumes:
+      - db:/data/postgres
+    ports:
+      - "5433:5432"
+    networks:
+      - db
+    restart: unless-stopped
+
+  ui:
+    image: ghcr.io/devtiro/devtiro-build-task-app:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - BACKEND_HOST=host.docker.internal
+      - BACKEND_PORT=8081
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  db:
+    driver: bridge
+
+volumes:
+  db:
