@@ -33,14 +33,14 @@ public class Recipe {
     private int resultQuantity;
 
     @Column(nullable = false)
-    private String craftJob;
+    private String job;
 
     @Column(nullable = false)
     private int level;
 
     @Builder.Default
     @OneToMany(mappedBy = "recipe")
-    private List<RecipeIngredients> recipeIngredients = new ArrayList<>();
+    private List<RecipeMaterials> recipeIngredients = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "recipe")

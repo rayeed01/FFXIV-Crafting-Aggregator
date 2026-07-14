@@ -36,7 +36,7 @@ public class Item {
 
     @Builder.Default
     @OneToMany(mappedBy = "item")
-    private List<RecipeIngredients> usedInRecipe = new ArrayList<>();
+    private List<RecipeMaterials> usedInRecipe = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "resultItem")

@@ -11,9 +11,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
-@Table(name = "recipe_ingredients", uniqueConstraints =
+@Table(name = "recipe_meterials", uniqueConstraints =
         {@UniqueConstraint(columnNames = {"recipe_id", "item_id"})})
-public class RecipeIngredients {
+public class RecipeMaterials {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
