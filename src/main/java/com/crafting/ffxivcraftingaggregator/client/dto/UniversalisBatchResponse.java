@@ -6,5 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 public record UniversalisBatchResponse(@JsonProperty("itemIDs")List<Integer> itemIds,
-                                       @JsonProperty("items") Map<String, UniversalisPriceResponse> items) {
+                                       @JsonProperty("items") Map<String, UniversalisPriceResponse> items,
+                                       @JsonProperty("unresolvedItems") List<Integer> unresolvedItems) {
 }

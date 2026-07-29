@@ -16,12 +16,12 @@ public class AdminController {
 
     private final XivapiSyncService xivapiSyncService;
 
-    @PostMapping("/sync")
+    @PostMapping("/sync/recipe")
     public ResponseEntity<SyncStatus> triggerSync(){
         return ResponseEntity.accepted().body(xivapiSyncService.startBulkSync());
     }
 
-    @GetMapping("/sync")
+    @GetMapping("/sync/recipe")
     public ResponseEntity<SyncStatus> getStatus(){
         return ResponseEntity.ok(xivapiSyncService.getStatus());
     }
