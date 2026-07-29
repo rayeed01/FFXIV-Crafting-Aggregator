@@ -50,4 +50,9 @@ public class User {
     protected void onCreate(){
         this.createdAt = LocalDateTime.now();
     }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role",nullable = false)
+    @Builder.Default
+    private Role role = Role.USER;
 }

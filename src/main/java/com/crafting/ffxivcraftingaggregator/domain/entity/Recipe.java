@@ -39,7 +39,7 @@ public class Recipe {
     private int level;
 
     @Builder.Default
-    @OneToMany(mappedBy = "recipe")
+    @OneToMany(mappedBy = "recipe",cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecipeMaterials> recipeIngredients = new ArrayList<>();
 
     @Builder.Default
