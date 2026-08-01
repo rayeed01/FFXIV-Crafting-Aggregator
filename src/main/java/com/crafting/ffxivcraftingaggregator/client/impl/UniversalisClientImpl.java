@@ -49,7 +49,7 @@ public class UniversalisClientImpl implements UniversalisClient {
     @Override
     public List<UniversalisWorld> getWorlds() {
         List<UniversalisWorld> worlds = restClient.get()
-                .uri("/api/v2/world")
+                .uri("/api/v2/worlds")
                 .retrieve()
                 .body(new ParameterizedTypeReference<List<UniversalisWorld>>() {});
 

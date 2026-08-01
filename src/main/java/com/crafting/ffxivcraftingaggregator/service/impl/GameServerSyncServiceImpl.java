@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,8 +35,14 @@ public class GameServerSyncServiceImpl implements GameServerSyncService {
     @Override
     @Transactional
     public GameServerSyncResult sync() {
-        List<UniversalisDataCenter> dataCenterPayload = universalisClient.getDataCenters();
-        List<UniversalisWorld> worldPayload = universalisClient.getWorlds();
+        List<UniversalisDataCenter> dataCenterPayload;
+        List<UniversalisWorld> worldPayload;
+        try {
+            dataCenterPayload = universalisClient.getDataCenters();
+            worldPayload = universalisClient.getWorlds();
+        }catch (RestClientException ex){
+            throw new GameServerSyncException("Universalis request failed during sync");
+        }
 
         if(dataCenterPayload.isEmpty() || worldPayload.isEmpty()){
             throw new GameServerSyncException("Universalis returned an empty payload (dataCenters=%d, worlds=%d); aborting sync"
