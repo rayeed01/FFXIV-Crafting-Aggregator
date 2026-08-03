@@ -3,6 +3,7 @@ name: CraftingAggregator
 services:
   db:
     image: postgres:latest
+    container_name: craft-db
     environment:
       POSTGRES_USER: rayeed
       POSTGRES_PASSWORD: password
@@ -13,18 +14,43 @@ services:
     ports:
       - "5433:5432"
     networks:
-      - db
+      - craft
     restart: unless-stopped
 
   adminer:
     image: adminer:latest
-    restart: always
+    container_name: craft-adminer
+    restart: unless-stopped
     ports:
       - "8888:8080"
     networks:
+      - craft
+    depends_on:
       - db
+  redis:
+    image: redis:8-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - craft
+    restart: unless-stopped
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis_insight_data:/data
+    networks:
+      - craft
+    depends_on:
+      - redis
+    restart: unless-stopped
 networks:
-  db:
+  craft:
     driver: bridge
 volumes:
   db:
+  redis_insight_data:

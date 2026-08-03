@@ -8,6 +8,7 @@ import com.crafting.ffxivcraftingaggregator.repository.UserRepository;
 import com.crafting.ffxivcraftingaggregator.security.FfxivUserDetails;
 import com.crafting.ffxivcraftingaggregator.security.JwtService;
 import com.crafting.ffxivcraftingaggregator.service.AuthService;
+import com.crafting.ffxivcraftingaggregator.service.WorldRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,6 +28,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final WorldRegistry worldRegistry;
 
 
     @Transactional
@@ -36,12 +38,15 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Username already taken");
         }
 
+        String world = worldRegistry.canonicalWorldName(registerRequest.defaultWorld());
+        String dataCenter = worldRegistry.canonicalDataCenterName(registerRequest.defaultDataCenter());
+
         User user = User.builder()
                 .username(registerRequest.username())
                 .email(registerRequest.email())
                 .password(passwordEncoder.encode(registerRequest.password()))
-                .defaultDataCenter(registerRequest.defaultDataCenter())
-                .defaultWorld(registerRequest.defaultWorld())
+                .defaultDataCenter(dataCenter)
+                .defaultWorld(world)
                 .build();
 
         userRepository.save(user);

@@ -51,7 +51,8 @@ public class GlobalExceptionHandler {
             UnauthorizedSavedCraftAccessException.class,
             SavedCraftNotFoundException.class,
             UserNotFoundException.class,
-            ItemNotFoundException.class}
+            ItemNotFoundException.class,
+            GameServerDataNotSyncedException.class}
     )
     public ResponseEntity<ErrorResponse> handleNotFound(Exception ex){
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage());
@@ -68,5 +69,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGameServerSync(GameServerSyncException ex){
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_GATEWAY.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(error);
+    }
+
+    @ExceptionHandler({UnknownDataCenterException.class,
+            UnknownWorldException.class}
+    )
+    public ResponseEntity<ErrorResponse> gameServerNotFound(Exception ex){
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 }

@@ -12,6 +12,7 @@ import com.crafting.ffxivcraftingaggregator.repository.RecipeRepository;
 import com.crafting.ffxivcraftingaggregator.repository.SavedCraftRepository;
 import com.crafting.ffxivcraftingaggregator.repository.UserRepository;
 import com.crafting.ffxivcraftingaggregator.service.SavedCraftService;
+import com.crafting.ffxivcraftingaggregator.service.WorldRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class SavedCraftServiceImpl implements SavedCraftService {
     private final SavedCraftMapper savedCraftMapper;
     private final UserRepository userRepository;
     private  final RecipeRepository recipeRepository;
+    private final WorldRegistry worldRegistry;
 
     @Transactional
     @Override
@@ -77,9 +79,12 @@ public class SavedCraftServiceImpl implements SavedCraftService {
     public SavedCraftDto updateSavedCraft(UUID userId, UUID savedCraftId, UpdateSavedCraftRequest request) {
         SavedCraft savedCraft = findOwnedSavedCraftOrThrow(userId, savedCraftId);
 
+        String world = worldRegistry.canonicalWorldName(request.world());
+        String dataCenter = worldRegistry.canonicalDataCenterName(request.dataCenter());
+
         savedCraft.setTitle(request.title());
-        savedCraft.setDataCenter(request.dataCenter());
-        savedCraft.setWorld(request.world());
+        savedCraft.setDataCenter(dataCenter);
+        savedCraft.setWorld(world);
         savedCraft.setNotes(request.notes());
 
         SavedCraft saved = savedCraftRepository.save(savedCraft);
