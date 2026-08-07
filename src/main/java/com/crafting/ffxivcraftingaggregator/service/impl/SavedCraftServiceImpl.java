@@ -1,5 +1,6 @@
 package com.crafting.ffxivcraftingaggregator.service.impl;
 
+import com.crafting.ffxivcraftingaggregator.client.dto.SavedCraftCostDto;
 import com.crafting.ffxivcraftingaggregator.domain.dto.*;
 import com.crafting.ffxivcraftingaggregator.domain.entity.Recipe;
 import com.crafting.ffxivcraftingaggregator.domain.entity.SavedCraft;
@@ -11,15 +12,15 @@ import com.crafting.ffxivcraftingaggregator.mapper.SavedCraftMapper;
 import com.crafting.ffxivcraftingaggregator.repository.RecipeRepository;
 import com.crafting.ffxivcraftingaggregator.repository.SavedCraftRepository;
 import com.crafting.ffxivcraftingaggregator.repository.UserRepository;
+import com.crafting.ffxivcraftingaggregator.service.CraftCostService;
 import com.crafting.ffxivcraftingaggregator.service.SavedCraftService;
 import com.crafting.ffxivcraftingaggregator.service.WorldRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,27 +32,38 @@ public class SavedCraftServiceImpl implements SavedCraftService {
     private final UserRepository userRepository;
     private  final RecipeRepository recipeRepository;
     private final WorldRegistry worldRegistry;
+    private final CraftCostService craftCostService;
 
     @Transactional
     @Override
     public SavedCraftDto createSavedCraftRequest(UUID userId, CreateSavedCraftRequest request) {
         User user = userRepository.getReferenceById(userId);
 
-        List<Recipe> recipes = recipeRepository.findAllById(request.recipeIds());
-        validateAllRecipesFound(request.recipeIds(), recipes);
+        ResolvedScope scope = resolveScope(request.dataCenter(), request.world());
+
+        List<UUID> recipeIds = request.recipes().stream()
+                .map(SavedCraftRecipeRequest::recipeId)
+                .toList();
+
+        List<Recipe> recipes = recipeRepository.findAllById(recipeIds);
+        validateAllRecipesFound(recipeIds, recipes);
 
         SavedCraft savedCraft = SavedCraft.builder()
                 .user(user)
                 .title(request.title())
-                .dataCenter(request.dataCenter())
-                .world(request.world())
+                .dataCenter(scope.dataCenter())
+                .world(scope.world())
                 .notes(request.notes())
                 .build();
 
-        recipes.forEach(recipe -> savedCraft.getSavedCraftRecipes().add(
+        Map<UUID,Recipe> recipesById = recipes.stream()
+                        .collect(Collectors.toMap(Recipe::getId, Function.identity()));
+
+        request.recipes().forEach(line -> savedCraft.getSavedCraftRecipes().add(
                 SavedCraftRecipes.builder()
                         .savedCraft(savedCraft)
-                        .recipe(recipe)
+                        .recipe(recipesById.get(line.recipeId()))
+                        .quantity(line.quantity())
                         .build()
         ));
 
@@ -62,7 +74,7 @@ public class SavedCraftServiceImpl implements SavedCraftService {
     @Transactional(readOnly = true)
     @Override
     public SavedCraftDto getSavedCraft(UUID userId, UUID savedCraftId) {
-        SavedCraft savedCraft = findOwnedSavedCraftOrThrow(savedCraftId,userId);
+        SavedCraft savedCraft = findOwnedSavedCraftOrThrow(userId, savedCraftId);
         return savedCraftMapper.toDto(savedCraft);
     }
 
@@ -79,12 +91,11 @@ public class SavedCraftServiceImpl implements SavedCraftService {
     public SavedCraftDto updateSavedCraft(UUID userId, UUID savedCraftId, UpdateSavedCraftRequest request) {
         SavedCraft savedCraft = findOwnedSavedCraftOrThrow(userId, savedCraftId);
 
-        String world = worldRegistry.canonicalWorldName(request.world());
-        String dataCenter = worldRegistry.canonicalDataCenterName(request.dataCenter());
+        ResolvedScope scope = resolveScope(request.dataCenter(), request.world());
 
         savedCraft.setTitle(request.title());
-        savedCraft.setDataCenter(dataCenter);
-        savedCraft.setWorld(world);
+        savedCraft.setDataCenter(scope.dataCenter);
+        savedCraft.setWorld(scope.world);
         savedCraft.setNotes(request.notes());
 
         SavedCraft saved = savedCraftRepository.save(savedCraft);
@@ -105,21 +116,33 @@ public class SavedCraftServiceImpl implements SavedCraftService {
     public SavedCraftDto addRecipes(UUID userId, UUID savedCraftId, AddRecipeRequest request) {
         SavedCraft savedCraft = findOwnedSavedCraftOrThrow(userId,savedCraftId);
 
-        List<Recipe> recipes = recipeRepository.findAllById(request.recipeIds());
-        validateAllRecipesFound(request.recipeIds(),recipes);
+        List<UUID> recipeIds = request.recipes().stream()
+                .map(SavedCraftRecipeRequest::recipeId)
+                .toList();
 
-        Set<UUID> existingRecipeIds = savedCraft.getSavedCraftRecipes().stream()
-                .map(scr -> scr.getRecipe().getId())
-                .collect(Collectors.toSet());
+        List<Recipe> recipes = recipeRepository.findAllById(recipeIds);
+        validateAllRecipesFound(recipeIds,recipes);
 
-        recipes.stream()
-                .filter(recipe -> !existingRecipeIds.contains(recipe.getId()))
-                .forEach(recipe -> savedCraft.getSavedCraftRecipes().add(
+        Map<UUID, Recipe> recipesById = recipes.stream()
+                .collect(Collectors.toMap(Recipe::getId, Function.identity()));
+
+        Map<UUID, SavedCraftRecipes> existingByRecipeId = savedCraft.getSavedCraftRecipes().stream()
+                .collect(Collectors.toMap(scr -> scr.getRecipe().getId(), Function.identity()));
+
+        for(SavedCraftRecipeRequest line : request.recipes()) {
+            SavedCraftRecipes existing = existingByRecipeId.get(line.recipeId());
+
+            if(existing != null) {
+                existing.setQuantity(line.quantity());
+            } else{
+                savedCraft.getSavedCraftRecipes().add(
                         SavedCraftRecipes.builder()
                                 .savedCraft(savedCraft)
-                                .recipe(recipe)
-                                .build()
-                ));
+                                .recipe(recipesById.get(line.recipeId()))
+                                .quantity(line.quantity())
+                                .build());
+            }
+        }
 
         SavedCraft saved = savedCraftRepository.save(savedCraft);
         return savedCraftMapper.toDto(saved);
@@ -127,7 +150,7 @@ public class SavedCraftServiceImpl implements SavedCraftService {
 
     @Transactional
     @Override
-    public SavedCraftDto removeRecipes(UUID userId, UUID savedCraftId, AddRecipeRequest request) {
+    public SavedCraftDto removeRecipes(UUID userId, UUID savedCraftId, RemoveRecipeRequest request) {
         SavedCraft savedCraft = findOwnedSavedCraftOrThrow(userId,savedCraftId);
 
         Set<UUID> idsToRemove = Set.copyOf(request.recipeIds());
@@ -137,6 +160,92 @@ public class SavedCraftServiceImpl implements SavedCraftService {
 
         SavedCraft saved = savedCraftRepository.save(savedCraft);
         return savedCraftMapper.toDto(saved);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public SavedCraftCostDto calculateCost(UUID userId, UUID savedCraftId) {
+        SavedCraft savedCraft = findOwnedSavedCraftOrThrow(userId, savedCraftId);
+
+        if (savedCraft.getSavedCraftRecipes().isEmpty()) {
+            return SavedCraftCostDto.builder()
+                    .savedCraftId(savedCraft.getId())
+                    .title(savedCraft.getTitle())
+                    .scope(savedCraft.getPriceScope())
+                    .totalCraftCost(0L)
+                    .totalBuyCost(0L)
+                    .savings(0L)
+                    .unobtainableItems(List.of())
+                    .items(List.of())
+                    .build();
+        }
+
+        // Two lines can point at different recipes producing the same item - alternative jobs, or
+        // an expert variant. Merging the quantities means the item is priced once for the combined
+        // total rather than twice at partial quantities, which matters because recipe yield makes
+        // cost non-linear: 2 + 2 of a yield-3 recipe is two crafts, but 4 is only two as well.
+        Map<Integer, Integer> itemQuantities = new LinkedHashMap<>();
+        for (SavedCraftRecipes line : savedCraft.getSavedCraftRecipes()) {
+            int itemId = line.getRecipe().getResultItem().getXivapiId();
+            itemQuantities.merge(itemId, line.getQuantity(), Integer::sum);
+        }
+
+        List<CraftCostNode> nodes =
+                craftCostService.calculateAll(itemQuantities, savedCraft.getPriceScope());
+
+        return summarise(savedCraft, nodes);
+    }
+
+    private SavedCraftCostDto summarise(SavedCraft savedCraft, List<CraftCostNode> nodes) {
+
+        List<String> unobtainable = nodes.stream()
+                .filter(node -> node.effectiveCost() == null)
+                .map(CraftCostNode::itemName)
+                .toList();
+
+        Long totalCraftCost = null;
+        Long totalBuyCost = null;
+        Long savings = null;
+
+        if (unobtainable.isEmpty()) {
+            totalCraftCost = nodes.stream()
+                    .mapToLong(CraftCostNode::effectiveCost)
+                    .sum();
+
+            // Buying outright is only a meaningful comparison if every item CAN be bought. One
+            // unbuyable item and the "what you saved" figure has no honest denominator.
+            boolean allBuyable = nodes.stream().allMatch(node -> node.buyCost() != null);
+
+            if (allBuyable) {
+                totalBuyCost = nodes.stream()
+                        .mapToLong(CraftCostNode::buyCost)
+                        .sum();
+                savings = totalBuyCost - totalCraftCost;
+            }
+        }
+
+        return SavedCraftCostDto.builder()
+                .savedCraftId(savedCraft.getId())
+                .title(savedCraft.getTitle())
+                .scope(savedCraft.getPriceScope())
+                .totalCraftCost(totalCraftCost)
+                .totalBuyCost(totalBuyCost)
+                .savings(savings)
+                .unobtainableItems(unobtainable)
+                .items(nodes)
+                .build();
+    }
+
+    private ResolvedScope resolveScope(String requestedDatacenter, String requestedWorld){
+        String dataCenter = worldRegistry.canonicalDataCenterName(requestedDatacenter);
+        if(requestedWorld == null || requestedWorld.isBlank()){
+            return new ResolvedScope(dataCenter, null);
+        }
+
+        String world = worldRegistry.canonicalWorldName(requestedWorld);
+        worldRegistry.validateWorldBelongsToDataCenter(world,dataCenter);
+
+        return new ResolvedScope(dataCenter,world);
     }
 
     private SavedCraft findOwnedSavedCraftOrThrow(UUID userId, UUID savedCraftId) {
@@ -155,4 +264,6 @@ public class SavedCraftServiceImpl implements SavedCraftService {
             throw new RecipeNotFoundException("One or more recipes not found");
         }
     }
+
+    private record ResolvedScope(String dataCenter, String world){}
 }

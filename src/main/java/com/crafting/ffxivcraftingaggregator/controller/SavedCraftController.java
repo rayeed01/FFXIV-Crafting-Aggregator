@@ -1,5 +1,6 @@
 package com.crafting.ffxivcraftingaggregator.controller;
 
+import com.crafting.ffxivcraftingaggregator.client.dto.SavedCraftCostDto;
 import com.crafting.ffxivcraftingaggregator.domain.dto.*;
 import com.crafting.ffxivcraftingaggregator.security.FfxivUserDetails;
 import com.crafting.ffxivcraftingaggregator.service.SavedCraftService;
@@ -60,7 +61,13 @@ public class SavedCraftController {
     @DeleteMapping("/{savedCraftId}/recipes")
     public ResponseEntity<SavedCraftDto> removeRecipes(@AuthenticationPrincipal FfxivUserDetails userDetails,
                                                        @PathVariable UUID savedCraftId,
-                                                       @Valid @RequestBody AddRecipeRequest request){
+                                                       @Valid @RequestBody RemoveRecipeRequest request){
         return ResponseEntity.ok(savedCraftService.removeRecipes(userDetails.getId(),savedCraftId,request));
+    }
+
+    @GetMapping("/{savedCraftId}/cost")
+    public ResponseEntity<SavedCraftCostDto> calculateCost(@AuthenticationPrincipal FfxivUserDetails userDetails,
+                                                           @PathVariable UUID savedCraftId){
+        return ResponseEntity.ok(savedCraftService.calculateCost(userDetails.getId(),savedCraftId));
     }
 }

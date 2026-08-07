@@ -34,7 +34,7 @@ public class SavedCraft {
     @Column(name = "data_center",nullable = false)
     private String dataCenter;
 
-    @Column(name = "world", nullable = false)
+    @Column(name = "world")
     private String world;
 
     @Column(name = "created",updatable = false,nullable = false)
@@ -49,6 +49,11 @@ public class SavedCraft {
     @Builder.Default
     @OneToMany(mappedBy = "savedCraft",cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SavedCraftRecipes> savedCraftRecipes = new ArrayList<>();
+
+    @Transient
+    public String getPriceScope(){
+        return (world == null || world.isBlank()) ? dataCenter : world;
+    }
 
     @PrePersist
     protected void onCreate(){

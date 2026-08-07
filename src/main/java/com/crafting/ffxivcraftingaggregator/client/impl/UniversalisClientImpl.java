@@ -1,22 +1,36 @@
 package com.crafting.ffxivcraftingaggregator.client.impl;
 
 import com.crafting.ffxivcraftingaggregator.client.UniversalisClient;
-import com.crafting.ffxivcraftingaggregator.client.dto.*;
+import com.crafting.ffxivcraftingaggregator.client.dto.ItemPrice;
+import com.crafting.ffxivcraftingaggregator.client.dto.UniversalisAggregatedResponse;
+import com.crafting.ffxivcraftingaggregator.client.dto.UniversalisAggregatedResponse.AggregatedResult;
+import com.crafting.ffxivcraftingaggregator.client.dto.UniversalisAggregatedResponse.PriceEntry;
+import com.crafting.ffxivcraftingaggregator.client.dto.UniversalisAggregatedResponse.QualityData;
+import com.crafting.ffxivcraftingaggregator.client.dto.UniversalisDataCenter;
+import com.crafting.ffxivcraftingaggregator.client.dto.UniversalisPrices;
+import com.crafting.ffxivcraftingaggregator.client.dto.UniversalisWorld;
+import com.crafting.ffxivcraftingaggregator.exception.UniversalisException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
-import org.springframework.web.client.RestClientResponseException;
-
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
 public class UniversalisClientImpl implements UniversalisClient {
-
     private static final int MAX_BATCH_SIZE = 100;
 
+    private static final Logger log = LoggerFactory.getLogger(UniversalisClientImpl.class);
     private final RestClient restClient;
 
     public UniversalisClientImpl(RestClient.Builder builder,
@@ -25,25 +39,23 @@ public class UniversalisClientImpl implements UniversalisClient {
     }
 
     @Override
-    public UniversalisPrices getPrices(List<Integer> itemXivapiIds, String worldOrDc) {
-        if(itemXivapiIds == null || itemXivapiIds.isEmpty()){
+    public UniversalisPrices getPrices(List<Integer> itemXivapiIds, String scope) {
+        if (itemXivapiIds == null || itemXivapiIds.isEmpty()) {
             return UniversalisPrices.empty();
         }
 
-        List<Integer> distinctIds = itemXivapiIds.stream()
-                .distinct()
-                .toList();
+        List<Integer> distinctIds = itemXivapiIds.stream().distinct().toList();
 
-        if(distinctIds.size() <= MAX_BATCH_SIZE){
-            return fetchChuck(distinctIds,worldOrDc);
+        if (distinctIds.size() <= MAX_BATCH_SIZE) {
+            return fetchChunk(distinctIds, scope);
         }
 
         UniversalisPrices merged = UniversalisPrices.empty();
-        for(int start = 0; start < distinctIds.size(); start += MAX_BATCH_SIZE){
+        for (int start = 0; start < distinctIds.size(); start += MAX_BATCH_SIZE) {
             int end = Math.min(start + MAX_BATCH_SIZE, distinctIds.size());
-            merged = merged.merge(fetchChuck(distinctIds.subList(start,end), worldOrDc));
+            merged = merged.merge(fetchChunk(distinctIds.subList(start, end), scope));
         }
-        return  merged;
+        return merged;
     }
 
     @Override
@@ -51,7 +63,7 @@ public class UniversalisClientImpl implements UniversalisClient {
         List<UniversalisWorld> worlds = restClient.get()
                 .uri("/api/v2/worlds")
                 .retrieve()
-                .body(new ParameterizedTypeReference<List<UniversalisWorld>>() {});
+                .body(new ParameterizedTypeReference<>() {});
 
         return worlds == null ? List.of() : worlds;
     }
@@ -61,62 +73,45 @@ public class UniversalisClientImpl implements UniversalisClient {
         List<UniversalisDataCenter> dataCenters = restClient.get()
                 .uri("/api/v2/data-centers")
                 .retrieve()
-                .body(new ParameterizedTypeReference<List<UniversalisDataCenter>>() {});
+                .body(new ParameterizedTypeReference<>() {});
 
         return dataCenters == null ? List.of() : dataCenters;
     }
 
-    private UniversalisPrices fetchChuck(List<Integer> chunk, String worldOrDc){
-        return chunk.size() == 1
-                ?fetchSingle(chunk.getFirst(), worldOrDc)
-                :fetchBatch(chunk, worldOrDc);
-    }
+    private UniversalisPrices fetchChunk(List<Integer> chunk, String scope) {
 
-    private UniversalisPrices fetchSingle(int itemXivapiId, String worldOrDc){
-        UniversalisPriceResponse single;
-        try{
-            single = restClient.get()
-                    .uri("/api/v2/{worldOrDc}/{ids}", worldOrDc, String.valueOf(itemXivapiId))
-                    .retrieve()
-                    .body(UniversalisPriceResponse.class);
-
-        }catch (RestClientResponseException ex){
-            if(ex.getStatusCode().is4xxClientError()){
-                return new UniversalisPrices(Map.of(),Set.of(itemXivapiId));
-            }
-            throw ex;
-        }
-
-        if(single == null){
-            return new UniversalisPrices(Map.of(), Set.of(itemXivapiId));
-        }
-        return new UniversalisPrices(Map.of(single.itemId(), single), Set.of());
-    }
-
-    private UniversalisPrices fetchBatch(List<Integer> chunk, String worldOrDc){
         String ids = chunk.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(","));
 
-        UniversalisBatchResponse response = restClient.get()
-                .uri("/api/v2/{worldOrDc}/{ids}", worldOrDc, ids)
-                .retrieve()
-                .body(UniversalisBatchResponse.class);
+        UniversalisAggregatedResponse response;
+        try {
+            response = restClient.get()
+                    .uri("/api/v2/aggregated/{scope}/{ids}", scope, ids)
+                    .retrieve()
+                    .body(UniversalisAggregatedResponse.class);
+        } catch (HttpClientErrorException ex) {
+            log.warn("Universalis rejected chunk of {} ids for scope {}: {}",
+                    chunk.size(), scope, ex.getStatusCode());
+            return new UniversalisPrices(Map.of(), new HashSet<>(chunk));
+        } catch (RestClientException ex) {
+            throw new UniversalisException("Universalis request failed for scope " + scope, ex);
+        }
 
-        if(response == null){
+        if (response == null) {
             return UniversalisPrices.empty();
         }
 
-        Map<Integer, UniversalisPriceResponse> prices = (response.items() == null)
-                ? Map.of()
-                : response.items().entrySet().stream()
-                .collect(Collectors.toMap(
-                        e -> Integer.parseInt(e.getKey()),
-                        Map.Entry::getValue));
+        Map<Integer, ItemPrice> prices = new HashMap<>();
+        if (response.results() != null) {
+            for (AggregatedResult result : response.results()) {
+                prices.put(result.itemId(), toItemPrice(result));
+            }
+        }
 
-        Set<Integer> unresolved = (response.unresolvedItems() == null)
+        Set<Integer> unresolved = (response.failedItems() == null)
                 ? new HashSet<>()
-                : new HashSet<>(response.unresolvedItems());
+                : new HashSet<>(response.failedItems());
 
         Set<Integer> accountedFor = new HashSet<>(prices.keySet());
         accountedFor.addAll(unresolved);
@@ -128,4 +123,48 @@ public class UniversalisClientImpl implements UniversalisClient {
         return new UniversalisPrices(prices, unresolved);
     }
 
+    private ItemPrice toItemPrice(AggregatedResult result) {
+
+        PriceEntry nq = pickScope(result.nq());
+        PriceEntry hq = pickScope(result.hq());
+
+        Long nqPrice = (nq == null) ? null : nq.price();
+        Long hqPrice = (hq == null) ? null : hq.price();
+
+        if (nqPrice == null && hqPrice == null) {
+
+            return ItemPrice.unlisted(result.itemId());
+        }
+
+        Long minPrice;
+        Integer cheapestWorldId;
+
+        if (nqPrice == null) {
+            minPrice = hqPrice;
+            cheapestWorldId = hq.worldId();
+        } else if (hqPrice == null || nqPrice <= hqPrice) {
+            minPrice = nqPrice;
+            cheapestWorldId = nq.worldId();
+        } else {
+            minPrice = hqPrice;
+            cheapestWorldId = hq.worldId();
+        }
+
+        return new ItemPrice(
+                result.itemId(),
+                minPrice,
+                nqPrice,
+                hqPrice,
+                cheapestWorldId);
+    }
+
+    private PriceEntry pickScope(QualityData quality) {
+        if (quality == null || quality.minListing() == null) {
+            return null;
+        }
+        if (quality.minListing().world() != null) {
+            return quality.minListing().world();
+        }
+        return quality.minListing().dc();
+    }
 }

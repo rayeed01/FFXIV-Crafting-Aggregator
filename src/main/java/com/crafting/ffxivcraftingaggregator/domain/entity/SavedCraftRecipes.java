@@ -21,6 +21,10 @@ public class SavedCraftRecipes {
     @EqualsAndHashCode.Include
     private UUID id;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private int quantity = 1;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "saved_craft_id")
     private SavedCraft savedCraft;

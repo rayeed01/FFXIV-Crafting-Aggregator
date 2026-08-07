@@ -1,7 +1,7 @@
 package com.crafting.ffxivcraftingaggregator.mapper.impl;
 
-import com.crafting.ffxivcraftingaggregator.domain.dto.RecipeDto;
 import com.crafting.ffxivcraftingaggregator.domain.dto.SavedCraftDto;
+import com.crafting.ffxivcraftingaggregator.domain.dto.SavedCraftRecipeDto;
 import com.crafting.ffxivcraftingaggregator.domain.dto.SavedCraftSummaryDto;
 import com.crafting.ffxivcraftingaggregator.domain.entity.SavedCraft;
 import com.crafting.ffxivcraftingaggregator.mapper.RecipeMapper;
@@ -19,8 +19,11 @@ public class SavedCraftMapperImpl implements SavedCraftMapper {
 
     @Override
     public SavedCraftDto toDto(SavedCraft savedCraft) {
-        List<RecipeDto> recipes = savedCraft.getSavedCraftRecipes().stream()
-                .map(savedCraftRecipes -> recipeMapper.toDto(savedCraftRecipes.getRecipe()))
+        List<SavedCraftRecipeDto> recipes = savedCraft.getSavedCraftRecipes().stream()
+                .map(scr -> SavedCraftRecipeDto.builder()
+                        .recipe(recipeMapper.toDto(scr.getRecipe()))
+                        .quantity(scr.getQuantity())
+                        .build())
                 .toList();
 
         return SavedCraftDto.builder()
@@ -28,6 +31,7 @@ public class SavedCraftMapperImpl implements SavedCraftMapper {
                 .title(savedCraft.getTitle())
                 .dataCenter(savedCraft.getDataCenter())
                 .world(savedCraft.getWorld())
+                .priceScope(savedCraft.getPriceScope())
                 .notes(savedCraft.getNotes())
                 .createdAt(savedCraft.getCreatedAt())
                 .updatedAt(savedCraft.getUpdatedAt())
@@ -42,6 +46,7 @@ public class SavedCraftMapperImpl implements SavedCraftMapper {
                 .title(savedCraft.getTitle())
                 .dataCenter(savedCraft.getDataCenter())
                 .world(savedCraft.getWorld())
+                .priceScope(savedCraft.getPriceScope())
                 .notes(savedCraft.getNotes())
                 .recipeCount(savedCraft.getSavedCraftRecipes().size())
                 .createdAt(savedCraft.getCreatedAt())

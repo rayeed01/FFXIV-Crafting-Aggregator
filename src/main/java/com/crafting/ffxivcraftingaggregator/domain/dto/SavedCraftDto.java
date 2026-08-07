@@ -10,9 +10,10 @@ import java.util.UUID;
 public record SavedCraftDto(UUID id,
                             String dataCenter,
                             String world,
+                            String priceScope,
                             String notes,
                             String title,
-                            List<RecipeDto> recipes,
+                            List<SavedCraftRecipeDto> recipes,
                             LocalDateTime createdAt,
                             LocalDateTime updatedAt) {
 }

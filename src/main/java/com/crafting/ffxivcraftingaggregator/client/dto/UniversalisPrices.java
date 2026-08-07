@@ -1,36 +1,33 @@
 package com.crafting.ffxivcraftingaggregator.client.dto;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
-public record UniversalisPrices(Map<Integer, UniversalisPriceResponse> prices,
+public record UniversalisPrices(Map<Integer, ItemPrice> prices,
                                 Set<Integer> unresolved) {
 
-    public UniversalisPrices{
-        prices = (prices == null) ? Map.of() : Map.copyOf(prices);
-        unresolved = (unresolved == null) ? Set.of() : Set.copyOf(unresolved);
+    public UniversalisPrices {
+        prices = (prices == null) ? Map.of() : Map.copyOf(new HashMap<>(prices));
+        unresolved = (unresolved == null) ? Set.of() : Set.copyOf(new HashSet<>(unresolved));
     }
 
-    public static UniversalisPrices empty(){
-        return new UniversalisPrices(Map.of(),Set.of());
+    public static UniversalisPrices empty() {
+        return new UniversalisPrices(Map.of(), Set.of());
     }
 
-    public UniversalisPrices merge(UniversalisPrices other){
-        Map<Integer,UniversalisPriceResponse> mergedPrices = new HashMap<>(this.prices);
+    public UniversalisPrices merge(UniversalisPrices other) {
+        Map<Integer, ItemPrice> mergedPrices = new HashMap<>(this.prices);
         mergedPrices.putAll(other.prices);
 
         Set<Integer> mergedUnresolved = new HashSet<>(this.unresolved);
         mergedUnresolved.addAll(other.unresolved);
 
-        return new UniversalisPrices(mergedPrices,mergedUnresolved);
+        return new UniversalisPrices(mergedPrices, mergedUnresolved);
     }
 
-    public boolean isUnresolved(int itemXivapiId){
+    public boolean isUnresolved(int itemXivapiId) {
         return unresolved.contains(itemXivapiId);
-    }
-
-    public Optional<Long> minPriceFor(int itemXivapiId){
-        return Optional.ofNullable(prices.get(itemXivapiId))
-                .filter(UniversalisPriceResponse::hasData)
-                .map(UniversalisPriceResponse::minPrice);
     }
 }

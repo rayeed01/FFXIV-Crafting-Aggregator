@@ -5,6 +5,7 @@ import com.crafting.ffxivcraftingaggregator.domain.entity.World;
 import com.crafting.ffxivcraftingaggregator.exception.GameServerDataNotSyncedException;
 import com.crafting.ffxivcraftingaggregator.exception.UnknownDataCenterException;
 import com.crafting.ffxivcraftingaggregator.exception.UnknownWorldException;
+import com.crafting.ffxivcraftingaggregator.exception.WorldDataCenterMismatchException;
 import com.crafting.ffxivcraftingaggregator.repository.DataCenterRepository;
 import com.crafting.ffxivcraftingaggregator.repository.WorldRepository;
 import com.crafting.ffxivcraftingaggregator.service.WorldRegistry;
@@ -50,6 +51,25 @@ public class WorldRegistryImpl implements WorldRegistry {
     }
 
     @Override
+    public void validateWorldBelongsToDataCenter(String worldName, String dataCenterName) {
+        String canonicalWorld = canonicalWorldName(worldName);
+        String canonicalDataCenter = canonicalDataCenterName(dataCenterName);
+
+        String actualDataCenter = currentSnapshot().dataCenterByWorld.get(normalise(canonicalWorld));
+
+        if(!canonicalDataCenter .equals(actualDataCenter)){
+            throw new WorldDataCenterMismatchException("%s is on %s not %s".formatted(canonicalWorld, actualDataCenter, canonicalDataCenter));
+        }
+
+    }
+
+    @Override
+    public String dataCenterForWorld(String worldName) {
+        String canonicalWorld = canonicalWorldName(worldName);
+        return currentSnapshot().dataCenterByWorld.get(normalise(canonicalWorld));
+    }
+
+    @Override
     public void refresh() {
         this.snapshot = load();
         logger.info("World registry refreshed: {} worlds, {} data centers", snapshot.worlds.size(), snapshot.dataCenters.size());
@@ -81,8 +101,10 @@ public class WorldRegistryImpl implements WorldRegistry {
         }
 
         Map<String, String> worldNames = new HashMap<>();
+        Map<String, String> dataCenterByWorld = new HashMap<>();
         for(World world: worlds){
             worldNames.put(normalise(world.getName()), world.getName());
+            dataCenterByWorld.put(normalise(world.getName()), world.getDataCenter().getName());
         }
 
         Map<String, String> dataCenterNames = new HashMap<>();
@@ -90,9 +112,13 @@ public class WorldRegistryImpl implements WorldRegistry {
             dataCenterNames.put(normalise(datacenter.getName()), datacenter.getName());
         }
 
-        return new Snapshot(Map.copyOf(worldNames), Map.copyOf(dataCenterNames));
+        return new Snapshot(Map.copyOf(worldNames),
+                Map.copyOf(dataCenterNames),
+                Map.copyOf(dataCenterByWorld));
     }
     
 
-    private record Snapshot(Map<String, String> worlds,Map<String, String> dataCenters){}
+    private record Snapshot(Map<String, String> worlds,
+                            Map<String, String> dataCenters,
+                            Map<String, String> dataCenterByWorld){}
 }

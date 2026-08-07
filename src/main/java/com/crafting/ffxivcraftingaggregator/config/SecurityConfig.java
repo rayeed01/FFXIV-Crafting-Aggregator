@@ -1,7 +1,9 @@
 package com.crafting.ffxivcraftingaggregator.config;
 
 import com.crafting.ffxivcraftingaggregator.security.FfxivUserDetailService;
+import com.crafting.ffxivcraftingaggregator.security.JwtAccessDeniedHandler;
 import com.crafting.ffxivcraftingaggregator.security.JwtAuthFilter;
+import com.crafting.ffxivcraftingaggregator.security.JwtAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +26,8 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final FfxivUserDetailService userDetailService;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder(){
@@ -55,7 +59,10 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(handling -> handling
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler));
 
         return http.build();
     }

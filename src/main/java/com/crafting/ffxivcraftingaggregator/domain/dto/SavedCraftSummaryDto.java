@@ -9,6 +9,7 @@ import java.util.UUID;
 public record SavedCraftSummaryDto(UUID id,
                                   String dataCenter,
                                   String world,
+                                  String priceScope,
                                   String notes,
                                   String title,
                                   int recipeCount,

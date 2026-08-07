@@ -1,7 +1,10 @@
 package com.crafting.ffxivcraftingaggregator;
 
 import com.crafting.ffxivcraftingaggregator.client.UniversalisClient;
+import com.crafting.ffxivcraftingaggregator.repository.WorldRepository;
+import com.crafting.ffxivcraftingaggregator.service.GameServerSyncService;
 import com.crafting.ffxivcraftingaggregator.service.XivapiSyncService;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -17,4 +20,15 @@ public class FfxivCraftingAggregatorApplication {
         SpringApplication.run(FfxivCraftingAggregatorApplication.class, args);
 
     }
+
+//    @Bean
+//    ApplicationRunner bootstrapWorlds(WorldRepository repo, GameServerSyncService sync) {
+//        return args -> {
+//            if (repo.count() == 0) {
+//                try { sync.sync(); }
+//                catch (Exception ex) {
+//                    System.out.println("Bootstrap world sync failed");}
+//            }
+//        };
+//    }
 }

@@ -5,14 +5,14 @@ services:
     image: postgres:latest
     container_name: craft-db
     environment:
-      POSTGRES_USER: rayeed
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: craft
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-craft}
       PGDATA: /data/postgres
     volumes:
       - db:/data/postgres
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     networks:
       - craft
     restart: unless-stopped
@@ -31,7 +31,7 @@ services:
     image: redis:8-alpine
     container_name: redis-cache
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     networks:
       - craft
     restart: unless-stopped

@@ -7,7 +7,6 @@ import lombok.Builder;
 public record UpdateSavedCraftRequest(@NotBlank(message = "Select a data center")
                                       String dataCenter,
 
-                                      @NotBlank(message = "Select a world")
                                       String world,
 
                                       String notes,
