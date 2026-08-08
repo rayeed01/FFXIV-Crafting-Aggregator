@@ -17,6 +17,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * Profile reads and default-market updates.
+ *
+ * <p>Names are canonicalised and validated as a pair before being stored, so a saved default is
+ * always a market that actually exists.
+ */
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;

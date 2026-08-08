@@ -6,6 +6,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * A crafting list with its full contents.
+ *
+ * <p>{@code world} is nullable: a list priced across a whole data center has no single world.
+ * {@code priceScope} is the resolved answer - the world when one is set, the data center
+ * otherwise - so clients need not re-implement that rule.
+ */
 @Builder
 public record SavedCraftDto(UUID id,
                             String dataCenter,

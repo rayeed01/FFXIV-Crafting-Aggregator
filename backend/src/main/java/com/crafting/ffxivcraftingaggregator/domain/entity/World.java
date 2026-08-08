@@ -5,6 +5,12 @@ import lombok.*;
 
 import java.util.UUID;
 
+/**
+ * A game world, always belonging to a data center.
+ *
+ * <p>{@code universalisId} is the id market listings are reported against, which is how a price
+ * result is traced back to the world it came from.
+ */
 @Getter
 @Setter
 @Builder

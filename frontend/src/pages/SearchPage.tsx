@@ -26,9 +26,18 @@ interface SearchResult {
 }
 
 /**
- * Items and recipes come from separate endpoints with no shared id - RecipeSummaryDto carries
- * only the result item's NAME, not its xivapiId. So name is the join key, normalised to avoid
- * case and spacing mismatches splitting one item into two rows.
+ * Merges the item and recipe result sets into one row per item.
+ *
+ * Items and recipes come from separate endpoints with no shared id - RecipeSummaryDto carries only
+ * the result item's name, not its xivapiId - so the name is the join key, normalised to stop case
+ * or spacing differences splitting one item into two rows.
+ *
+ * A recipe with no matching item is kept rather than discarded: both endpoints cap at 50, so a
+ * recipe can match while its item falls outside the item cap, and dropping it would make the
+ * result set look arbitrary. Such a row has no xivapiId and so cannot offer a cost link.
+ *
+ * The presence of a recipe is treated as craftability regardless of what the item row claimed.
+ * Craftable items sort first, being the ones the calculator can act on.
  */
 function mergeResults(items: ItemDto[], recipes: RecipeSummaryDto[]): SearchResult[] {
   const byName = new Map<string, SearchResult>()
@@ -55,11 +64,8 @@ function mergeResults(items: ItemDto[], recipes: RecipeSummaryDto[]): SearchResu
       existing.recipeId = recipe.id
       existing.job = recipe.job
       existing.level = recipe.level
-      // A recipe existing IS craftability, even if the item row said otherwise.
       existing.canBeCrafted = true
     } else {
-      // Both endpoints cap at 50, so a recipe can match while its item falls outside the item
-      // cap. Keep it - losing it would make the result set look arbitrary.
       byName.set(key, {
         key: recipe.id,
         name: recipe.resultItemName,
@@ -74,12 +80,23 @@ function mergeResults(items: ItemDto[], recipes: RecipeSummaryDto[]): SearchResu
   }
 
   return [...byName.values()].sort((a, b) => {
-    // Craftable first: they are what the calculator can act on.
     if (a.canBeCrafted !== b.canBeCrafted) return a.canBeCrafted ? -1 : 1
     return a.name.localeCompare(b.name)
   })
 }
 
+/**
+ * Unified search over items and recipes.
+ *
+ * The query lives in the URL so a search is shareable and survives a reload, and returning from a
+ * recipe restores what was typed.
+ *
+ * Both endpoints are awaited in a single loader so the merged list updates atomically; resolving
+ * them separately would make rows appear and then rearrange as the second response landed.
+ *
+ * The level column is blank for items with no recipe, and also for level 0, which is absent data
+ * rather than a real level - 735 recipes carry it.
+ */
 export function SearchPage() {
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
@@ -96,8 +113,6 @@ export function SearchPage() {
 
   const enabled = debounced.trim().length > 0
 
-  // Both endpoints in one loader so the merged list updates atomically - resolving them
-  // separately makes rows appear then rearrange as the second response lands.
   const { data, error, loading, reload } = useAsync(
     async (signal) => {
       const [items, recipes] = await Promise.all([
@@ -174,9 +189,6 @@ export function SearchPage() {
                   </p>
                 </div>
 
-                {/* Fixed slot so the column stays aligned; blank for items with no recipe.
-                    735 recipes carry level 0, which is absent data rather than a real level -
-                    "Lv 0" would read as a claim. */}
                 <span className="tabular w-14 shrink-0 text-right text-sm text-muted-foreground">
                   {result.level !== null && result.level > 0 ? `Lv ${result.level}` : ''}
                 </span>

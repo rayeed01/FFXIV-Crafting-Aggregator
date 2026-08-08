@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.util.UUID;
 
+/**
+ * One ingredient of a recipe: an item and the quantity a single craft consumes.
+ *
+ * <p>Quantity is per craft rather than per requested unit, so a caller wanting several must scale
+ * by the number of crafts, not by the amount wanted.
+ */
 @Getter
 @Setter
 @Builder

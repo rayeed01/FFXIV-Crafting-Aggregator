@@ -33,8 +33,12 @@ export interface SavedCraftForm {
 /**
  * Shared state for the create and edit dialogs.
  *
- * Resetting keys off `open` rather than mount, because a dialog stays mounted between openings -
- * without it, reopening would show whatever was typed the previous time.
+ * The reset keys off `open` rather than mount, because a dialog stays mounted between openings -
+ * without that, reopening would show whatever was typed the previous time.
+ *
+ * That reset effect depends on the individual fields rather than the `initial` object: callers
+ * build it inline, so a fresh identity arrives on every render and depending on the object would
+ * reset the form on each keystroke.
  */
 export function useSavedCraftForm({
   open,
@@ -47,8 +51,6 @@ export function useSavedCraftForm({
   const [error, setError] = React.useState<ApiError | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
 
-  // Depend on the fields, not the object: callers build `initial` inline, so a new identity
-  // arrives every render and would reset the form on each keystroke.
   const { title, notes, dataCenter, world } = initial
   React.useEffect(() => {
     if (open) {
@@ -80,6 +82,13 @@ export function useSavedCraftForm({
   return { values, setValue, error, submitting, submit }
 }
 
+/**
+ * Title, notes and market selectors shared by the create and edit dialogs.
+ *
+ * The world select offers an explicit "any world" option because a list may be priced across a
+ * whole data center. Radix forbids an empty string as a select value, so a sentinel stands in for
+ * it and is translated back to an empty string on change.
+ */
 export function SavedCraftFormFields({ form }: { form: SavedCraftForm }) {
   const { dataCenters, worldsByDataCenter, loading } = useWorlds()
   const { values, setValue, error, submitting } = form
@@ -160,7 +169,6 @@ export function SavedCraftFormFields({ form }: { form: SavedCraftForm }) {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {/* Radix forbids an empty-string value, so a sentinel stands in for "any". */}
                   <SelectItem value="__ALL__">Any world (whole DC)</SelectItem>
                 </SelectGroup>
                 {worldsForDc.length > 0 && (

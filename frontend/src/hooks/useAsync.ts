@@ -8,10 +8,19 @@ interface AsyncState<T> {
 }
 
 /**
- * Runs an async loader whenever `deps` change, with the in-flight request aborted on change or
- * unmount so a slow earlier response cannot overwrite a newer one.
+ * Runs an async loader whenever `deps` change.
  *
- * Pass `enabled: false` to defer - used where a query string has not been entered yet.
+ * The in-flight request is aborted on dependency change and on unmount, so a slow earlier
+ * response can never overwrite a newer one - the classic out-of-order search result bug.
+ *
+ * The loader is held in a ref so callers need not memoise it; the `deps` array is the single
+ * source of truth for when to re-run. An AbortError is swallowed rather than surfaced, because a
+ * cancellation is not a failure the user should see.
+ *
+ * @param loader  receives an AbortSignal to pass through to fetch
+ * @param deps    re-runs the loader when any of these change
+ * @param enabled defer entirely, for a query that has not been entered yet
+ * @returns the current data, error and loading state, plus `reload` to re-run on demand
  */
 export function useAsync<T>(
   loader: (signal: AbortSignal) => Promise<T>,
@@ -21,8 +30,6 @@ export function useAsync<T>(
   const [state, setState] = React.useState<AsyncState<T>>({ data: null, error: null, loading: enabled })
   const [reloadToken, setReloadToken] = React.useState(0)
 
-  // Held in a ref so `loader` need not be memoised by every caller; the deps array is the
-  // single source of truth for when to re-run.
   const loaderRef = React.useRef(loader)
   React.useEffect(() => {
     loaderRef.current = loader
@@ -44,7 +51,6 @@ export function useAsync<T>(
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
-        // An aborted fetch surfaces as AbortError; that is a cancellation, not a failure.
         if (error instanceof DOMException && error.name === 'AbortError') return
         setState({
           data: null,
@@ -62,7 +68,11 @@ export function useAsync<T>(
   return { ...state, reload }
 }
 
-/** Debounce a rapidly-changing value, so search boxes do not fire a request per keystroke. */
+/**
+ * Debounces a rapidly-changing value so a search box does not fire a request per keystroke.
+ *
+ * @param delayMs quiet period before the value is adopted
+ */
 export function useDebounced<T>(value: T, delayMs = 300): T {
   const [debounced, setDebounced] = React.useState(value)
 

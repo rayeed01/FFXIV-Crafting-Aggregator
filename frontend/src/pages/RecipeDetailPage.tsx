@@ -11,6 +11,16 @@ import { jobName } from '@/lib/jobs'
 import { ErrorState, PageHeader } from '@/components/states'
 import { formatNumber } from '@/lib/format'
 
+/**
+ * A single recipe and its materials.
+ *
+ * Back navigation steps through history rather than linking to a fixed URL, so it returns to the
+ * exact search that was left - a hardcoded link discarded whatever had been typed. A location key
+ * of "default" means the page was loaded directly and there is no history entry to return to, in
+ * which case it falls back to the search page.
+ *
+ * Level is omitted when zero, which is absent data rather than a real level.
+ */
 export function RecipeDetailPage() {
   const { recipeId } = useParams<{ recipeId: string }>()
   const navigate = useNavigate()
@@ -36,9 +46,6 @@ export function RecipeDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* A hardcoded /search link discarded whatever had been typed. Going back through history
-          returns to the exact search URL instead, query and all. location.key is "default" only
-          on a directly-loaded page, where there is no history entry to return to. */}
       <Button
         variant="ghost"
         size="sm"

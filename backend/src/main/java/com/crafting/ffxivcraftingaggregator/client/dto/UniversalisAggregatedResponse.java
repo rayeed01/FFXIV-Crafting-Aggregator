@@ -4,6 +4,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
+/**
+ * Raw response shape of the Universalis aggregated market endpoint.
+ *
+ * <p>Mirrors their JSON exactly, including the nesting of quality, then scope, then figure, so all
+ * the reshaping happens in one place while the rest of the application works in its own terms.
+ *
+ * <p>Both NQ and HQ are parsed, and each carries the world its cheapest listing sits on. Those can
+ * differ, which is why the two qualities are tracked separately rather than reduced early.
+ */
 public record UniversalisAggregatedResponse(@JsonProperty("results") List<AggregatedResult> results,
                                             @JsonProperty("failedItems") List<Integer> failedItems) {
 

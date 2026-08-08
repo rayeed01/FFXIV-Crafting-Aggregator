@@ -5,6 +5,9 @@ import com.crafting.ffxivcraftingaggregator.domain.entity.Item;
 import com.crafting.ffxivcraftingaggregator.mapper.ItemMapper;
 import org.springframework.stereotype.Component;
 
+/**
+ * Straight field copy from entity to DTO.
+ */
 @Component
 public class ItemMapperImpl implements ItemMapper {
     @Override

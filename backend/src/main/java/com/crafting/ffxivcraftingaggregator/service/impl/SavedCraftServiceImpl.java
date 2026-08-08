@@ -25,6 +25,16 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * Crafting list CRUD and costing.
+ *
+ * <p>Every operation resolves the list through an ownership check that reports another user's list
+ * as not found, so the authorisation rule cannot be forgotten at an individual call site.
+ *
+ * <p>A list stores a data center and an optional world. The derived pricing scope is the world
+ * when one is set and the whole data center otherwise, which is why the world is nullable rather
+ * than the pair being required.
+ */
 public class SavedCraftServiceImpl implements SavedCraftService {
 
     private final SavedCraftRepository savedCraftRepository;
@@ -162,6 +172,17 @@ public class SavedCraftServiceImpl implements SavedCraftService {
         return savedCraftMapper.toDto(saved);
     }
 
+    /**
+     * Prices every recipe in a list against the list's own scope.
+     *
+     * <p>Quantities are merged per result item before pricing. Two lines can name different
+     * recipes that produce the same item - an alternative job, or an expert variant - and pricing
+     * them separately would be wrong, because recipe yield makes cost non-linear: two lots of 2
+     * from a yield-3 recipe is two crafts, and so is a single lot of 4.
+     *
+     * @throws SavedCraftNotFoundException           if no such list exists
+     * @throws UnauthorizedSavedCraftAccessException if the list belongs to another user
+     */
     @Transactional(readOnly = true)
     @Override
     public SavedCraftCostDto calculateCost(UUID userId, UUID savedCraftId) {
@@ -180,10 +201,6 @@ public class SavedCraftServiceImpl implements SavedCraftService {
                     .build();
         }
 
-        // Two lines can point at different recipes producing the same item - alternative jobs, or
-        // an expert variant. Merging the quantities means the item is priced once for the combined
-        // total rather than twice at partial quantities, which matters because recipe yield makes
-        // cost non-linear: 2 + 2 of a yield-3 recipe is two crafts, but 4 is only two as well.
         Map<Integer, Integer> itemQuantities = new LinkedHashMap<>();
         for (SavedCraftRecipes line : savedCraft.getSavedCraftRecipes()) {
             int itemId = line.getRecipe().getResultItem().getXivapiId();
@@ -196,6 +213,16 @@ public class SavedCraftServiceImpl implements SavedCraftService {
         return summarise(savedCraft, nodes);
     }
 
+    /**
+     * Rolls priced nodes up into the list-level totals.
+     *
+     * <p>Totals are null rather than partial when anything is unobtainable: a sum that silently
+     * omits items reads as the full cost of the list and is not.
+     *
+     * <p>The buy total and savings need every item to be purchasable, not merely obtainable. One
+     * unbuyable item and "what you saved" has no honest denominator, so both stay null while the
+     * craft total still stands.
+     */
     private SavedCraftCostDto summarise(SavedCraft savedCraft, List<CraftCostNode> nodes) {
 
         List<String> unobtainable = nodes.stream()
@@ -212,8 +239,6 @@ public class SavedCraftServiceImpl implements SavedCraftService {
                     .mapToLong(CraftCostNode::effectiveCost)
                     .sum();
 
-            // Buying outright is only a meaningful comparison if every item CAN be bought. One
-            // unbuyable item and the "what you saved" figure has no honest denominator.
             boolean allBuyable = nodes.stream().allMatch(node -> node.buyCost() != null);
 
             if (allBuyable) {

@@ -10,9 +10,21 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Crafting lists.
+ *
+ * <p>Both queries declare entity graphs, at different depths. A saved craft is a chain of
+ * associations - list to lines to recipe to items - and without a fetch graph rendering one list
+ * of ten recipes issues dozens of follow-up selects.
+ */
 @NullMarked
 @Repository
 public interface SavedCraftRepository extends JpaRepository<SavedCraft, UUID> {
+
+    /**
+     * One list, fetched deeply enough to serve the detail view and costing: lines, recipes, result
+     * items and every ingredient.
+     */
     @EntityGraph(attributePaths = {
             "savedCraftRecipes",
             "savedCraftRecipes.recipe",
@@ -23,6 +35,12 @@ public interface SavedCraftRepository extends JpaRepository<SavedCraft, UUID> {
     @Override
     Optional<SavedCraft> findById(UUID id);
 
+    /**
+     * Every list for one user, fetched shallowly - lines and result items, but not ingredients.
+     *
+     * <p>The index only shows names and counts, and pulling every ingredient of every recipe of
+     * every list to render that would be far more data than the page uses.
+     */
     @EntityGraph(attributePaths = {
             "savedCraftRecipes",
             "savedCraftRecipes.recipe",

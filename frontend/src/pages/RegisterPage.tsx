@@ -10,6 +10,16 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { WorldDataCenterPicker } from '@/components/WorldPicker'
 
+/**
+ * Account creation.
+ *
+ * The world, data centre, password length and confirmation are all checked client-side first.
+ * These are server-side rules too, but a round trip to learn about them also clears the password
+ * fields, which is a poor way to find out about a typo.
+ *
+ * The confirmation mismatch is only reported once something has actually been typed in that
+ * field, so the form does not scold the user before they have finished.
+ */
 export function RegisterPage() {
   const { register, isAuthenticated, initialising } = useAuth()
   const navigate = useNavigate()
@@ -36,8 +46,6 @@ export function RegisterPage() {
     setError(null)
     setLocalError(null)
 
-    // Both are @NotBlank server-side; catching it here avoids a round trip that would also
-    // clear the password field.
     if (!form.defaultDataCenter || !form.defaultWorld) {
       setLocalError('Choose both a data center and a home world.')
       return
@@ -139,7 +147,6 @@ export function RegisterPage() {
                   required
                   aria-invalid={mismatch}
                 />
-                {/* Only complain once they have actually typed something in this field. */}
                 {mismatch ? (
                   <p className="text-xs text-destructive">Passwords do not match.</p>
                 ) : (

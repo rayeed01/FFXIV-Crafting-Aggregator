@@ -106,10 +106,14 @@ class CraftCostServiceImplTest {
     @DisplayName("buy versus craft")
     class TheDecision {
 
+        /**
+         * Ore collapses in price, so making an Iron Ingot costs more than buying one.
+         *
+         * <p>Buy is 10 x 3; craft is 3 ore at 20 plus 1 shard at 5.
+         */
         @Test
         @DisplayName("buys when the market is cheaper than the ingredients")
         void buysWhenCheaper() {
-            // Ore collapses in price, so making an Iron Ingot costs more than buying one.
             world.item(IRON_ORE, "Iron Ore", false).price(20);
             world.item(IRON_INGOT, "Iron Ingot", true).price(10);
             world.install();
@@ -117,26 +121,27 @@ class CraftCostServiceImplTest {
             CraftCostNode result = craftCostService.calculate(IRON_INGOT, 3, SCOPE);
 
             assertThat(result.decision()).isEqualTo(Decision.BUY);
-            assertThat(result.buyCost()).isEqualTo(30);        // 10 x 3
-            assertThat(result.craftCost()).isEqualTo(65);      // 3x20 ore + 1x5 shard
+            assertThat(result.buyCost()).isEqualTo(30);
+            assertThat(result.craftCost()).isEqualTo(65);
             assertThat(result.effectiveCost()).isEqualTo(30);
         }
 
+        /** Buy is 100 x 3; craft is 65, because a single craft yields all three. */
         @Test
         @DisplayName("crafts when the ingredients are cheaper than the market")
         void craftsWhenCheaper() {
             CraftCostNode result = craftCostService.calculate(IRON_INGOT, 3, SCOPE);
 
             assertThat(result.decision()).isEqualTo(Decision.CRAFT);
-            assertThat(result.buyCost()).isEqualTo(300);       // 100 x 3
-            assertThat(result.craftCost()).isEqualTo(65);      // one craft yields all 3
+            assertThat(result.buyCost()).isEqualTo(300);
+            assertThat(result.craftCost()).isEqualTo(65);
             assertThat(result.effectiveCost()).isEqualTo(65);
         }
 
+        /** Craft cost works out to exactly 65, so the item is priced at 65 to force the tie. */
         @Test
         @DisplayName("a tie goes to buying - same gil, no crafting time, no materials tied up")
         void tieGoesToBuying() {
-            // Craft cost works out to exactly 65, so price the item at 65 too.
             world.item(IRON_INGOT, "Iron Ingot", true).price(65);
             world.install();
 
@@ -153,15 +158,18 @@ class CraftCostServiceImplTest {
 
             assertThat(result.decision()).isEqualTo(Decision.BUY);
             assertThat(result.craftCost()).isNull();
-            assertThat(result.buyCost()).isEqualTo(140);       // 20 x 7
+            assertThat(result.buyCost()).isEqualTo(140);
             assertThat(result.ingredients()).isEmpty();
         }
 
+        /**
+         * Coke is dumped on the market below the cost of its own ingredients, while Steel Ingot
+         * as a whole is still worth crafting. The tree has to reflect both, and the final
+         * assertion pins that the parent used Coke's BUY price rather than its craft price.
+         */
         @Test
         @DisplayName("each node decides independently - a BUY can sit under a CRAFT")
         void decisionsAreMadePerNode() {
-            // Coke is dumped on the market below the cost of its own ingredients, while Steel
-            // Ingot as a whole is still worth crafting. The tree must reflect both.
             world.item(COKE, "Coke", true).price(1);
             world.install();
 
@@ -172,7 +180,6 @@ class CraftCostServiceImplTest {
             CraftCostNode coke = childOf(steel, COKE);
             assertThat(coke.decision()).isEqualTo(Decision.BUY);
 
-            // And the parent must have used Coke's BUY price, not its craft price.
             CraftCostNode ironIngot = childOf(steel, IRON_INGOT);
             assertThat(steel.craftCost())
                     .isEqualTo(ironIngot.effectiveCost() + coke.effectiveCost());
@@ -187,10 +194,10 @@ class CraftCostServiceImplTest {
     @DisplayName("recipe yield")
     class Yield {
 
+        /** The recipe makes 3 and only 1 is wanted: still one craft, and ingredients for all 3. */
         @Test
         @DisplayName("one craft covers a request smaller than the yield, with surplus")
         void yieldCoversSmallerRequest() {
-            // Recipe makes 3; only 1 wanted. Still one craft, and the ingredients for all 3.
             CraftCostNode result = craftCostService.calculate(IRON_INGOT, 1, SCOPE);
 
             assertThat(result.craftsRequired()).isEqualTo(1);
@@ -204,19 +211,23 @@ class CraftCostServiceImplTest {
             CraftCostNode result = craftCostService.calculate(IRON_INGOT, 4, SCOPE);
 
             assertThat(result.craftsRequired()).isEqualTo(2);
-            assertThat(result.surplus()).isEqualTo(2);        // 6 made, 4 wanted
+            assertThat(result.surplus()).isEqualTo(2);
         }
 
+        /**
+         * The subtle one. Wanting 4 of a yield-3 recipe means 2 crafts, so 3 x 2 = 6 ore. Scaling
+         * by the requested 4 would charge for 12 ore, three times too much.
+         *
+         * <p>Craft cost is 6 ore at 20 plus 2 shards at 5.
+         */
         @Test
         @DisplayName("ingredients scale by CRAFTS, not by the quantity requested")
         void ingredientsScaleByCrafts() {
-            // The subtle one. Wanting 4 of a yield-3 recipe means 2 crafts, so 3x2 = 6 ore.
-            // Scaling by the requested 4 would charge for 12 ore - three times too much.
             CraftCostNode result = craftCostService.calculate(IRON_INGOT, 4, SCOPE);
 
             assertThat(childOf(result, IRON_ORE).quantityNeeded()).isEqualTo(6);
             assertThat(childOf(result, FIRE_SHARD).quantityNeeded()).isEqualTo(2);
-            assertThat(result.craftCost()).isEqualTo(130);    // 6x20 + 2x5
+            assertThat(result.craftCost()).isEqualTo(130);
         }
 
         @Test
@@ -237,6 +248,10 @@ class CraftCostServiceImplTest {
     @DisplayName("items that cannot be obtained")
     class Unobtainable {
 
+        /**
+         * A zero cost here would make the item look free and every craft using it look
+         * profitable, so the absence of a price has to stay null.
+         */
         @Test
         @DisplayName("an unlisted raw material is UNOBTAINABLE with a null cost, never zero")
         void unlistedRawMaterialIsUnobtainable() {
@@ -246,11 +261,14 @@ class CraftCostServiceImplTest {
             CraftCostNode result = craftCostService.calculate(IRON_ORE, 5, SCOPE);
 
             assertThat(result.decision()).isEqualTo(Decision.UNOBTAINABLE);
-            // A zero here would make the item look free and every craft using it look profitable.
             assertThat(result.effectiveCost()).isNull();
             assertThat(result.buyCost()).isNull();
         }
 
+        /**
+         * Summing only the obtainable ingredients would report 60 and look like a bargain against
+         * the buy price of 300 - for a craft that cannot actually be completed.
+         */
         @Test
         @DisplayName("one unobtainable ingredient makes the whole craft cost unknown")
         void oneBadIngredientNullsTheCraftCost() {
@@ -259,8 +277,6 @@ class CraftCostServiceImplTest {
 
             CraftCostNode result = craftCostService.calculate(IRON_INGOT, 3, SCOPE);
 
-            // Summing only the obtainable ingredients would report 60 and look like a bargain
-            // against the buy price of 300 - a craft that cannot actually be completed.
             assertThat(result.craftCost()).isNull();
             assertThat(result.decision()).isEqualTo(Decision.BUY);
             assertThat(result.effectiveCost()).isEqualTo(300);
@@ -279,11 +295,13 @@ class CraftCostServiceImplTest {
             assertThat(result.effectiveCost()).isNull();
         }
 
+        /**
+         * Coal cannot be had, so Coke cannot be crafted; Coke also cannot be bought, so Steel
+         * Ingot cannot be crafted either. Only its own market price remains.
+         */
         @Test
         @DisplayName("unobtainability propagates all the way up the tree")
         void unobtainabilityPropagatesUpwards() {
-            // Coal cannot be had, so Coke cannot be crafted; Coke also cannot be bought, so
-            // Steel Ingot cannot be crafted either. Only its own market price remains.
             world.unresolved(COAL);
             world.unlisted(COKE);
             world.install();
@@ -318,11 +336,15 @@ class CraftCostServiceImplTest {
     @DisplayName("tree traversal")
     class Traversal {
 
+        /**
+         * Fire Shard sits under both Iron Ingot and Coke. A naive "already visited" guard would
+         * skip the second and silently understate Coke's cost.
+         *
+         * <p>The quantities differ because each parent needs its own amount.
+         */
         @Test
         @DisplayName("a shared ingredient is costed separately in each branch that uses it")
         void sharedIngredientIsCostedInBothBranches() {
-            // Fire Shard sits under both Iron Ingot and Coke. A naive "already visited" guard
-            // would skip the second and silently understate Coke's cost.
             CraftCostNode steel = craftCostService.calculate(STEEL_INGOT, 1, SCOPE);
 
             CraftCostNode underIron = childOf(childOf(steel, IRON_INGOT), FIRE_SHARD);
@@ -330,15 +352,16 @@ class CraftCostServiceImplTest {
 
             assertThat(underIron).isNotNull();
             assertThat(underCoke).isNotNull();
-            // Different quantities, because each parent needs its own amount.
             assertThat(underIron.quantityNeeded()).isNotEqualTo(underCoke.quantityNeeded());
         }
 
+        /**
+         * Not something FFXIV data should contain, but recursion over 14.9k rows of third-party
+         * data must not be left unbounded.
+         */
         @Test
         @DisplayName("a recipe that requires itself is reported as a CYCLE, not a stack overflow")
         void selfReferencingRecipeIsACycle() {
-            // Not something FFXIV data should contain, but recursion over 14.9k rows of
-            // third-party data must not be left unbounded.
             world.recipe(IRON_INGOT, 1, Map.of(IRON_INGOT, 1));
             world.install();
 
@@ -354,7 +377,7 @@ class CraftCostServiceImplTest {
             CraftCostNode result = craftCostService.calculate(IRON_ORE, 5, SCOPE);
 
             assertThat(result.quantityNeeded()).isEqualTo(5);
-            assertThat(result.buyCost()).isEqualTo(100);      // 20 x 5, not 20
+            assertThat(result.buyCost()).isEqualTo(100);
         }
 
         @Test
@@ -376,13 +399,15 @@ class CraftCostServiceImplTest {
     @DisplayName("calculateAll")
     class Batch {
 
+        /**
+         * The whole point of the batch path. Two separate calculate() calls would be two lookups,
+         * and a crafting list of ten recipes would be ten.
+         */
         @Test
         @DisplayName("prices every requested item in ONE market lookup")
         void oneMarketLookupForTheWholeBatch() {
             craftCostService.calculateAll(Map.of(STEEL_INGOT, 1, COKE, 2), SCOPE);
 
-            // The whole point of the batch path. Two separate calculate() calls would be two
-            // lookups, and a crafting list of ten recipes would be ten.
             verify(marketPriceService, times(1)).getPrices(any(), anyString());
         }
 
@@ -397,11 +422,13 @@ class CraftCostServiceImplTest {
                     .containsExactlyInAnyOrder(STEEL_INGOT, COKE);
         }
 
+        /**
+         * Coke is both a root in its own right and an ingredient of Steel Ingot. Once its recipe
+         * is loaded for one, the other must not trigger a second query.
+         */
         @Test
         @DisplayName("a shared sub-recipe is not queried twice")
         void sharedSubtreeIsLoadedOnce() {
-            // Coke is both a root in its own right and an ingredient of Steel Ingot. Once its
-            // recipe is loaded for one, the other must not trigger a second query.
             craftCostService.calculateAll(Map.of(STEEL_INGOT, 1, COKE, 2), SCOPE);
 
             List<Collection<Integer>> queried = world.queriedBatches();
@@ -431,10 +458,10 @@ class CraftCostServiceImplTest {
     @DisplayName("input validation")
     class Guards {
 
+        /** A zero quantity would cost 0 gil and read downstream as free. */
         @Test
         @DisplayName("rejects a quantity below 1 before doing any work")
         void rejectsZeroQuantity() {
-            // A zero quantity would cost 0 gil and read downstream as free.
             assertThatThrownBy(() -> craftCostService.calculate(IRON_ORE, 0, SCOPE))
                     .isInstanceOf(IllegalArgumentException.class);
 

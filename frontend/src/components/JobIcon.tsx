@@ -8,6 +8,12 @@ import { cn } from '@/lib/utils'
  *
  * Renders nothing when the craft type is missing or unrecognised - an item with no recipe simply
  * has no job, and a blank slot reads better than a placeholder implying data failed to load.
+ *
+ * If the asset itself fails to load the job abbreviation is shown instead, which carries the same
+ * information in less space.
+ *
+ * @param craftType XIVAPI CraftType name such as "Smithing"; translated to a job by {@link jobInfo}
+ * @param showName  append the full job name beside the icon
  */
 export function JobIcon({
   craftType,
@@ -37,7 +43,6 @@ export function JobIcon({
           className={cn('size-4 shrink-0 object-contain', className)}
         />
       ) : (
-        // Abbreviation carries the same information when the asset will not load.
         <span className="font-mono text-[10px] font-semibold text-muted-foreground">{info.abbr}</span>
       )}
       {showName && <span>{info.job}</span>}

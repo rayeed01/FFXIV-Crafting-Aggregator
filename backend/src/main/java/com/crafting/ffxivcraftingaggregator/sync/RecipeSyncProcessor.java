@@ -14,6 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Turns one page of XIVAPI recipes into persisted rows.
+ *
+ * <p>Items are upserted before the recipes that reference them, since a recipe cannot be stored
+ * without its result item and ingredients existing first.
+ *
+ * <p>Runs in its own transaction per page, so an interrupted import leaves whole pages committed
+ * rather than one partial page rolled back - the import is safe to simply run again.
+ */
 @Component
 @RequiredArgsConstructor
 public class RecipeSyncProcessor {

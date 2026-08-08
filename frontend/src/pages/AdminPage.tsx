@@ -28,6 +28,12 @@ export function AdminPage() {
   )
 }
 
+/**
+ * Triggers the Universalis world and data-centre sync.
+ *
+ * Invalidates the shared world cache on success, so selectors elsewhere pick up newly added worlds
+ * without a page reload.
+ */
 function WorldSyncCard() {
   const [running, setRunning] = React.useState(false)
   const [result, setResult] = React.useState<GameServerSyncResult | null>(null)
@@ -39,7 +45,6 @@ function WorldSyncCard() {
     try {
       const outcome = await api.admin.syncWorlds()
       setResult(outcome)
-      // Selectors elsewhere hold a cached copy; drop it so new worlds appear without a reload.
       invalidateWorldCache()
       toast.success(`Synced ${outcome.worldsSynced} worlds across ${outcome.dataCentersSynced} data centers`)
     } catch (err) {
@@ -91,6 +96,15 @@ function WorldSyncCard() {
   )
 }
 
+/**
+ * Starts and monitors the XIVAPI bulk recipe import.
+ *
+ * Status is polled only while a sync is actually running: the endpoint is otherwise static, and a
+ * permanent timer would keep hitting the API from an idle tab.
+ *
+ * A 409 on start is SyncAlreadyRunningException rather than a real failure, so the view is
+ * refreshed to pick up the run that is already in flight.
+ */
 function RecipeSyncCard() {
   const [status, setStatus] = React.useState<SyncStatus | null>(null)
   const [error, setError] = React.useState<ApiError | null>(null)
@@ -115,8 +129,6 @@ function RecipeSyncCard() {
     return () => controller.abort()
   }, [refresh])
 
-  // Poll only while a sync is in flight - the endpoint is otherwise static, and a permanent
-  // timer would keep hitting the API on an idle tab.
   React.useEffect(() => {
     if (!status?.running) return
     const timer = setInterval(() => void refresh(), POLL_INTERVAL_MS)
@@ -130,7 +142,6 @@ function RecipeSyncCard() {
       toast.success('Recipe sync started')
     } catch (err) {
       const apiError = err instanceof ApiError ? err : new ApiError(0, 'Could not start the sync.')
-      // 409 from SyncAlreadyRunningException - not really a failure, just refresh the view.
       if (apiError.status === 409) void refresh()
       toast.error(apiError.message)
     } finally {

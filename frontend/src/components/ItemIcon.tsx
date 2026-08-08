@@ -6,8 +6,11 @@ import { cn } from '@/lib/utils'
 /**
  * Item icon with a placeholder fallback.
  *
- * Falls back on error as well as on a missing URL: XIVAPI has no asset for every id, and a
+ * Falls back on load error as well as on a missing URL: XIVAPI has no asset for every id, and a
  * broken-image glyph in a dense list looks like the app is failing rather than the icon.
+ *
+ * The failure flag resets whenever `src` changes, since a new image deserves a fresh attempt -
+ * without that the placeholder would stick for the rest of the component's life.
  */
 export function ItemIcon({
   src,
@@ -21,7 +24,6 @@ export function ItemIcon({
   const [failed, setFailed] = React.useState(false)
   const url = iconUrl(src)
 
-  // A new src is a new image - clear the previous failure or the placeholder would stick.
   React.useEffect(() => setFailed(false), [src])
 
   if (!url || failed) {

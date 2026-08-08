@@ -43,6 +43,15 @@ function ThemeToggle() {
   )
 }
 
+/**
+ * App shell: header, primary navigation, user menu and footer, around the routed page.
+ *
+ * The admin entry is hidden for non-admins, but that is presentation only - the backend still
+ * enforces hasRole("ADMIN") on /api/v1/admin regardless of what the menu shows.
+ *
+ * There is no separate Preferences entry because preferences live on the profile page, so a
+ * second link would point at the same screen.
+ */
 export function AppLayout() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth()
 
@@ -97,14 +106,11 @@ export function AppLayout() {
                     </span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {/* Preferences lived on the profile page all along, so a second entry pointing
-                      at the same screen was just a duplicate. */}
                   <DropdownMenuItem asChild>
                     <Link to="/profile">
                       <UserIcon /> Profile
                     </Link>
                   </DropdownMenuItem>
-                  {/* Server-side authorisation is unchanged; this only hides an unusable link. */}
                   {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin">

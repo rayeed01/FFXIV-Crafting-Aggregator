@@ -12,6 +12,15 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.function.Function;
 
+/**
+ * Issues and reads JSON Web Tokens.
+ *
+ * <p>The token carries the username as its subject and nothing else. Roles are deliberately absent:
+ * they are read from the database per request, so a permission change takes effect immediately
+ * rather than when the token expires.
+ *
+ * <p>The signing key comes from configuration and must be at least 256 bits for HS256.
+ */
 @Service
 public class JwtService {
     @Value("${jwt.secret}")

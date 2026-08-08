@@ -8,6 +8,15 @@ import org.springframework.web.client.RestClient;
 
 import java.util.List;
 
+/**
+ * XIVAPI client for the item and recipe catalogue.
+ *
+ * <p>Requests only the fields the sync actually stores rather than whole rows, since a recipe row
+ * upstream carries a great deal this application has no use for.
+ *
+ * <p>Used exclusively by the background sync. Nothing in the request path calls XIVAPI - once
+ * imported, recipes are served from the local database.
+ */
 @Component
 public class XivapiClientImpl implements XivapiClient {
 

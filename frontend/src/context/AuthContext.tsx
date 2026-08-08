@@ -24,6 +24,15 @@ interface AuthContextValue {
 
 const AuthContext = React.createContext<AuthContextValue | null>(null)
 
+/**
+ * Owns the JWT session.
+ *
+ * A stored token is restored on boot but only trusted once /users/me confirms it: an expired one
+ * left in localStorage would otherwise render a logged-in shell with no data behind it.
+ *
+ * A 401 from any request anywhere clears the session exactly once, via a handler registered with
+ * the API client, which covers tokens that expire mid-session.
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = React.useState<UserDto | null>(null)
   const [initialising, setInitialising] = React.useState(true)
@@ -34,14 +43,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserState(null)
   }, [])
 
-  // Any 401 from any request clears the session, including tokens that expired mid-session.
   React.useEffect(() => {
     setUnauthorizedHandler(logout)
     return () => setUnauthorizedHandler(null)
   }, [logout])
 
-  // Restore a stored token on boot. The token is only trusted once /users/me confirms it -
-  // an expired one left in localStorage would otherwise render a logged-in shell with no data.
   React.useEffect(() => {
     const stored = readStoredToken()
     if (!stored) {
@@ -73,13 +79,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  /**
+   * Adopts a freshly issued token and loads the user behind it.
+   *
+   * A token that cannot be resolved to a user is unusable, so it is discarded rather than left as
+   * a half-open session that looks signed in but cannot load anything.
+   */
   const establishSession = React.useCallback(async (token: string) => {
     setAuthToken(token)
     writeStoredToken(token)
     try {
       setUserState(await api.users.me())
     } catch (error) {
-      // A token we cannot resolve to a user is unusable - do not leave a half-open session.
       setAuthToken(null)
       writeStoredToken(null)
       throw error instanceof ApiError

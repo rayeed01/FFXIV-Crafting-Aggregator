@@ -18,13 +18,21 @@ function LegacySavedCraftRedirect() {
   return <Navigate to={`/lists/${savedCraftId}`} replace />
 }
 
+/**
+ * Route table.
+ *
+ * Browse, recipes and craft cost are public, mirroring the backend's permitAll on items, recipes
+ * and craft-cost. Lists and profile require a session; admin additionally requires the role.
+ *
+ * The /saved-crafts paths are the pre-rename URLs, kept as redirects so existing links and
+ * bookmarks continue to resolve.
+ */
 export function App() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<Navigate to="/search" replace />} />
 
-        {/* Public - mirrors the backend's permitAll on items, recipes and craft-cost. */}
         <Route path="/search" element={<SearchPage />} />
         <Route path="/recipes/:recipeId" element={<RecipeDetailPage />} />
         <Route path="/craft-cost" element={<CraftCostPage />} />
@@ -32,14 +40,12 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Lists are the account-only feature. */}
         <Route element={<ProtectedRoute />}>
           <Route path="/lists" element={<SavedCraftsPage />} />
           <Route path="/lists/:savedCraftId" element={<SavedCraftDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
-        {/* Old paths, kept so existing links and bookmarks do not break. */}
         <Route path="/saved-crafts" element={<Navigate to="/lists" replace />} />
         <Route path="/saved-crafts/:savedCraftId" element={<LegacySavedCraftRedirect />} />
 

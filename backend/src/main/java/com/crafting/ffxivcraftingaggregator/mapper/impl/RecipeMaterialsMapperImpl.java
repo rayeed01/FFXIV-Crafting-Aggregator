@@ -7,6 +7,9 @@ import com.crafting.ffxivcraftingaggregator.mapper.RecipeMaterialsMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * Straight field copy, delegating the item to its own mapper.
+ */
 @Component
 @RequiredArgsConstructor
 public class RecipeMaterialsMapperImpl implements RecipeMaterialsMapper {

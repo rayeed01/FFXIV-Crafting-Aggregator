@@ -85,13 +85,14 @@ class SavedCraftControllerTest {
     // Authentication
     // ------------------------------------------------------------------
 
+    /** The important half is the second assertion: a rejected request must not reach business
+     * logic at all. */
     @Test
     @DisplayName("rejects an unauthenticated request without touching the service")
     void unauthenticatedRequestIsRejected() throws Exception {
         mockMvc.perform(get("/api/v1/saved-crafts"))
                 .andExpect(status().isUnauthorized());
 
-        // The important half: a rejected request must not reach business logic at all.
         verifyNoInteractions(savedCraftService);
     }
 
@@ -103,6 +104,10 @@ class SavedCraftControllerTest {
     @DisplayName("POST /api/v1/saved-crafts")
     class Create {
 
+        /**
+         * If the controller ever took a userId from the payload, one user could create crafts
+         * owned by another. This pins that the id comes from the security context.
+         */
         @Test
         @WithTestUser
         @DisplayName("passes the authenticated user's id, never anything from the request body")
@@ -114,8 +119,6 @@ class SavedCraftControllerTest {
                             .content(objectMapper.writeValueAsString(validCreateRequest())))
                     .andExpect(status().isOk());
 
-            // If the controller ever took a userId from the payload, one user could create crafts
-            // owned by another. This pins that it comes from the security context.
             verify(savedCraftService).createSavedCraftRequest(eq(USER_ID), any());
         }
 
@@ -184,12 +187,15 @@ class SavedCraftControllerTest {
             verifyNoInteractions(savedCraftService);
         }
 
+        /**
+         * A zero-quantity line would price at 0 gil and read downstream as free, so the
+         * {@code @Min(1)} on SavedCraftRecipeRequest has to fire through {@code @Valid} on the
+         * list element rather than only on the list itself.
+         */
         @Test
         @WithTestUser
         @DisplayName("rejects a quantity below 1")
         void zeroQuantityIsRejected() throws Exception {
-            // A zero-quantity line would price at 0 gil and read downstream as free, so the
-            // @Min(1) on SavedCraftRecipeRequest has to fire through @Valid on the list element.
             CreateSavedCraftRequest request = CreateSavedCraftRequest.builder()
                     .title("Bad quantity")
                     .dataCenter("Aether")
@@ -249,6 +255,10 @@ class SavedCraftControllerTest {
     @DisplayName("GET /api/v1/saved-crafts/{id}")
     class Get {
 
+        /**
+         * Both parameters are UUID, so transposing them compiles cleanly and silently 404s
+         * everything. That exact bug shipped once already, which is why the order is pinned.
+         */
         @Test
         @WithTestUser
         @DisplayName("passes user id and craft id in the right order")
@@ -259,8 +269,6 @@ class SavedCraftControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(CRAFT_ID.toString()));
 
-            // Both parameters are UUID, so a swap compiles cleanly and silently 404s everything.
-            // That exact bug shipped once already.
             verify(savedCraftService).getSavedCraft(USER_ID, CRAFT_ID);
         }
 
@@ -274,6 +282,7 @@ class SavedCraftControllerTest {
                     .andExpect(jsonPath("$.priceScope").value("Faerie"));
         }
 
+        /** A 403 would confirm the craft exists and allow enumeration by id. */
         @Test
         @WithTestUser
         @DisplayName("someone else's craft is 404, never 403")
@@ -281,7 +290,6 @@ class SavedCraftControllerTest {
             when(savedCraftService.getSavedCraft(any(), any()))
                     .thenThrow(new SavedCraftNotFoundException("List not found"));
 
-            // 403 would confirm the craft exists and allow enumeration by id.
             mockMvc.perform(get("/api/v1/saved-crafts/{id}", CRAFT_ID))
                     .andExpect(status().isNotFound());
         }

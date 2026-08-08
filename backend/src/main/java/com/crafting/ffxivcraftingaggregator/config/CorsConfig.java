@@ -8,9 +8,23 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Cross-origin rules for browser clients.
+ *
+ * <p>The frontend is served from its own origin in development, so without this every request
+ * from it would be blocked by the browser.
+ */
 @Configuration
 public class CorsConfig {
 
+    /**
+     * Allows the local development frontends to call the API.
+     *
+     * <p>Origins are listed explicitly rather than wildcarded: requests carry an Authorization
+     * header, and a wildcard origin with credentials is both rejected by browsers and a bad idea.
+     *
+     * <p>A deployed frontend needs its origin added here.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();

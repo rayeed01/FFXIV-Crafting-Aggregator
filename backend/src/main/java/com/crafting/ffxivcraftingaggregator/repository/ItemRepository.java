@@ -9,9 +9,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Items imported from XIVAPI, keyed internally by UUID but looked up by XIVAPI id wherever the
+ * game's own identifiers are in play.
+ */
 @Repository
 public interface ItemRepository extends JpaRepository<Item, UUID> {
 
+    /** Uncapped substring search. Prefer the Top50 variant for anything user-facing. */
     List<Item> findByNameContainingIgnoreCase(String name);
 
     /**
@@ -24,5 +29,12 @@ public interface ItemRepository extends JpaRepository<Item, UUID> {
      */
     List<Item> findTop50ByNameContainingIgnoreCaseOrderByNameAsc(String name);
     Optional<Item> findByXivapiId(int xivapiId);
+
+    /**
+     * Bulk lookup by XIVAPI id, for resolving a whole batch of items in one query.
+     *
+     * <p>Ids with no matching row are simply absent from the result; callers that need to know
+     * about them must compare against what they asked for.
+     */
     List<Item> findByXivapiIdIn(Collection<Integer> xivapiIds);
 }

@@ -15,11 +15,15 @@ const DECISION_META: Record<
   BUY: { label: 'Buy', variant: 'buy', Icon: ShoppingCart },
   CRAFT: { label: 'Craft', variant: 'craft', Icon: Hammer },
   UNOBTAINABLE: { label: 'Unobtainable', variant: 'unobtainable', Icon: Ban },
-  // The backend emits CYCLE when a recipe graph refers back to itself; surfacing it plainly
-  // beats showing a bare "—" that looks like a loading failure.
   CYCLE: { label: 'Recipe loop', variant: 'cycle', Icon: RefreshCcwDot },
 }
 
+/**
+ * Buy / craft / unobtainable marker for one row.
+ *
+ * CYCLE is given a plain label rather than being hidden: the backend emits it when a recipe graph
+ * refers back to itself, and a bare em-dash there reads as a loading failure.
+ */
 export function DecisionBadge({ decision }: { decision: Decision }) {
   const { label, variant, Icon } = DECISION_META[decision]
   return (
@@ -30,7 +34,12 @@ export function DecisionBadge({ decision }: { decision: Decision }) {
   )
 }
 
-/** HQ/NQ marker. Deliberately distinct from the decision colours so the two do not blur together. */
+/**
+ * HQ/NQ marker.
+ *
+ * Styled distinctly from the decision colours so the two badge families do not blur together in a
+ * dense row.
+ */
 export function QualityBadge({ quality }: { quality: 'HQ' | 'NQ' }) {
   return (
     <Badge
@@ -57,14 +66,22 @@ interface NodeRowProps {
   showWorld: boolean
 }
 
+/**
+ * One item in the tree, with its ingredients nested beneath it.
+ *
+ * The quality badge, source world and job are shown only where they mean something: quality and
+ * world only when the row's cost actually came from a purchase, job and level only for items that
+ * have a recipe at all.
+ *
+ * Column widths here must mirror the header in {@link CraftCostTree} exactly - a change in one
+ * needs the same change in the other, or the columns stop lining up.
+ */
 function NodeRow({ node, depth, defaultExpanded, worldNameById, showWorld }: NodeRowProps) {
   const hasChildren = node.ingredients.length > 0
   const [expanded, setExpanded] = React.useState(defaultExpanded)
 
   const unobtainable = node.effectiveCost === null
-  // `?? null` because Map.get returns undefined for an id the world sync has not seen.
   const worldName = node.cheapestWorldId === null ? null : (worldNameById.get(node.cheapestWorldId) ?? null)
-  // Only meaningful when the row's cost actually came from a purchase.
   const boughtHere = node.decision === 'BUY'
 
   return (
@@ -96,7 +113,6 @@ function NodeRow({ node, depth, defaultExpanded, worldNameById, showWorld }: Nod
             {node.itemName}
           </span>
           <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-            {/* Absent for raw materials, which have no recipe and so no job or level. */}
             {node.job && (
               <span className="flex items-center gap-1.5">
                 <JobIcon craftType={node.job} />
@@ -113,8 +129,6 @@ function NodeRow({ node, depth, defaultExpanded, worldNameById, showWorld }: Nod
           </span>
         </span>
 
-        {/* Fixed-width slot, present whether or not there is a badge. Rendering it conditionally
-            shifted Qty and Decision out from under their headers on every row that had one. */}
         <span className="hidden w-9 shrink-0 sm:block">
           {node.buyQuality && boughtHere && <QualityBadge quality={node.buyQuality} />}
         </span>
@@ -164,17 +178,22 @@ function costTooltip(node: CraftCostNode, worldName: string | null): string {
 }
 
 /**
- * The recursive buy-vs-craft breakdown.
+ * The recursive buy-versus-craft breakdown.
  *
  * Only the first two levels expand by default - a deep recipe expanded whole is hundreds of rows,
  * and the decision the user came for is almost always at the top.
+ *
+ * The header's column widths must mirror {@link NodeRow} exactly; changing one without the other
+ * misaligns every row.
+ *
+ * @param showWorld reveal which world each purchase comes from, which is only meaningful when
+ *                  pricing across a whole data center rather than a single world
  */
 export function CraftCostTree({ root, showWorld = false }: { root: CraftCostNode; showWorld?: boolean }) {
   const { worldNameById } = useWorlds()
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
-      {/* Widths mirror NodeRow exactly - any change here needs the same change there. */}
       <div className="flex items-center gap-3 border-b border-border bg-secondary/50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         <span className="size-5 shrink-0" />
         <span className="flex-1">Item</span>
@@ -194,7 +213,15 @@ export function CraftCostTree({ root, showWorld = false }: { root: CraftCostNode
   )
 }
 
-/** Flattens the tree into just the items the plan says to buy, as a shopping list. */
+/**
+ * Flattens the tree into just the items the plan says to buy, as a shopping list.
+ *
+ * A bought item's own ingredients are not collected - buying it means never making it.
+ *
+ * Quantities for the same item are combined across branches, but a null cost is contagious: one
+ * unpriced entry makes the combined figure unknown rather than a partial sum that would read as
+ * the true total.
+ */
 export function collectPurchases(
   root: CraftCostNode,
 ): { name: string; quantity: number; cost: number | null; worldId: number | null; quality: 'HQ' | 'NQ' | null }[] {
@@ -208,7 +235,6 @@ export function collectPurchases(
       const existing = totals.get(node.itemName)
       if (existing) {
         existing.quantity += node.quantityNeeded
-        // Null is contagious: one unpriced entry makes the combined figure unknown, not partial.
         existing.cost =
           existing.cost === null || node.effectiveCost === null ? null : existing.cost + node.effectiveCost
       } else {
@@ -220,7 +246,7 @@ export function collectPurchases(
           quality: node.buyQuality,
         })
       }
-      return // a bought item's own ingredients are not purchased
+      return
     }
     node.ingredients.forEach(walk)
   }

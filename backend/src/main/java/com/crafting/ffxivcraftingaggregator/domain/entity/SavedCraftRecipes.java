@@ -7,6 +7,11 @@ import java.util.UUID;
 
 @NoArgsConstructor
 @AllArgsConstructor
+/**
+ * One line of a crafting list: a recipe and how many times it is to be made.
+ *
+ * <p>A join entity rather than a plain many-to-many, because the quantity has to live somewhere.
+ */
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)

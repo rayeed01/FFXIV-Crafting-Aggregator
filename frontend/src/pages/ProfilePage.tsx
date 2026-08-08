@@ -100,6 +100,12 @@ function AccountCard({ user, isAdmin }: { user: import('@/types/api').UserDto; i
   )
 }
 
+/**
+ * Editor for the user's default market.
+ *
+ * Submission requires both fields, since both are NotBlank server-side, and is disabled while the
+ * form is unchanged so the button reflects whether there is anything to save.
+ */
 function PreferencesCard({
   user,
   onSaved,
@@ -161,7 +167,6 @@ function PreferencesCard({
           />
 
           <div className="flex items-center gap-3">
-            {/* Both fields are @NotBlank server-side, so an empty world blocks submission. */}
             <Button type="submit" disabled={!dirty || saving || !dataCenter || !world}>
               {saving ? <Loader2 className="animate-spin" /> : <Check />}
               Save changes

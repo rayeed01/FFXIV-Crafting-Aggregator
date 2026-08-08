@@ -47,6 +47,17 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * Stateless JWT filter chain.
+     *
+     * <p>Read access to items, recipes, worlds, data centers and craft cost is public: all of it
+     * is game and market data that Universalis and XIVAPI already serve openly, and registration
+     * needs the world list before any token exists. Craft cost in particular wants rate limiting
+     * rather than authentication as its real protection, since each call fans out to Universalis.
+     *
+     * <p>CSRF is disabled because the session is a bearer token rather than a cookie, so there is
+     * no ambient credential for a cross-site form post to abuse.
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
         http.authorizeHttpRequests(auth -> auth
@@ -55,9 +66,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/api/v1/recipes/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/v1/worlds").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/v1/data-centers").permitAll()
-                        // Public game and market data, same as /items and /recipes. The signed-out
-                        // limits are presentational; the real protection this endpoint wants is
-                        // rate limiting, since each call fans out to Universalis.
                         .requestMatchers(HttpMethod.GET,"/api/v1/craft-cost/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

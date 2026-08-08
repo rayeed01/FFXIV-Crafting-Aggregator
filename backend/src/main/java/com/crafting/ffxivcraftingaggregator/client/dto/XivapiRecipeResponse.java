@@ -4,6 +4,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
+/**
+ * Raw response shape of a single XIVAPI recipe row.
+ *
+ * <p>The nesting mirrors XIVAPI's: fields wrapped in a {@code fields} object, and references
+ * expanded into their own row objects. Ingredients arrive as two parallel lists - the items and
+ * their amounts - which the sync zips together.
+ */
 public record XivapiRecipeResponse(@JsonProperty("row_id") int rowId,
                                    @JsonProperty("fields") RecipeFields fields) {
 

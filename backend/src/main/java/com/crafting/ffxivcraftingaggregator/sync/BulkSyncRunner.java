@@ -14,6 +14,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Runs the XIVAPI catalogue import on a background thread.
+ *
+ * <p>Separated from the service that starts it so the import can be transactional per page while
+ * the caller returns immediately. Progress counters are passed in and updated as pages land,
+ * which is what makes the status endpoint pollable.
+ *
+ * <p>Clears the running flag when it finishes or fails, otherwise a crashed import would block
+ * every later attempt until a restart.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j

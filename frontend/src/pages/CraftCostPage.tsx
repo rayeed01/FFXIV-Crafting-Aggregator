@@ -32,6 +32,20 @@ const QUALITY_OPTIONS: { value: Quality; label: string; hint: string }[] = [
   { value: 'NQ', label: 'NQ only', hint: 'Price the item as normal quality' },
 ]
 
+/**
+ * Buy-versus-craft calculator for a single item.
+ *
+ * Data centre and world are separate controls, and an empty world means "price across the whole
+ * data centre" - frequently the cheaper answer, and the case where showing each purchase's source
+ * world is meaningful. The backend's `scope` takes either, so a chosen world wins and the data
+ * centre is the fallback.
+ *
+ * Every control is mirrored into the URL so a result is shareable and survives a reload. The
+ * signed-in default data centre is adopted only when nothing was supplied, so it never clobbers an
+ * explicit choice from a shared link.
+ *
+ * Public: signed-out visitors price one item at a time, with lists reserved for accounts.
+ */
 export function CraftCostPage() {
   const { itemXivapiId } = useParams<{ itemXivapiId?: string }>()
   const [params, setParams] = useSearchParams()
@@ -39,8 +53,6 @@ export function CraftCostPage() {
   const { user, isAuthenticated } = useAuth()
   const { worldNameById, worldsByDataCenter, dataCenters, loading: worldsLoading } = useWorlds()
 
-  // Data center and world are now separate: an empty world means "price across the whole DC",
-  // which is the cheaper answer more often than any single world.
   const [dataCenter, setDataCenter] = React.useState(
     () => params.get('dataCenter') ?? user?.defaultDataCenter ?? '',
   )
@@ -50,7 +62,6 @@ export function CraftCostPage() {
     () => (params.get('quality') as Quality) || 'CHEAPEST',
   )
 
-  // Adopt the signed-in default once it arrives, without clobbering an explicit URL choice.
   React.useEffect(() => {
     if (!dataCenter && user?.defaultDataCenter) setDataCenter(user.defaultDataCenter)
   }, [dataCenter, user?.defaultDataCenter])
@@ -65,7 +76,6 @@ export function CraftCostPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataCenter, world, quantity, quality])
 
-  // The backend's `scope` takes either; a chosen world wins, otherwise the whole data center.
   const scope = world || dataCenter
   const pricingWholeDataCenter = !world
 
@@ -140,7 +150,6 @@ export function CraftCostPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {/* Radix forbids an empty-string value, so a sentinel stands in for "any". */}
                     <SelectItem value="__ALL__">Any world (whole DC)</SelectItem>
                   </SelectGroup>
                   {worldsForDc.length > 0 && (
@@ -234,6 +243,13 @@ export function CraftCostPage() {
   )
 }
 
+/**
+ * Headline craft, buy and recommendation figures for the root item.
+ *
+ * When the requested quality has no listing the backend falls back to the cheaper one, and that
+ * substitution is called out rather than silently showing a price for a quality the user did not
+ * ask for.
+ */
 function CostSummary({
   node,
   worldNameById,
@@ -249,8 +265,6 @@ function CostSummary({
   const cheaperToCraft = delta !== null && delta < 0
   const worldName = node.cheapestWorldId === null ? null : worldNameById.get(node.cheapestWorldId)
 
-  // The backend falls back when the requested quality has no listing; say so rather than
-  // silently showing a price for the other quality.
   const fellBack =
     requestedQuality !== 'CHEAPEST' && node.buyQuality !== null && node.buyQuality !== requestedQuality
 
@@ -385,7 +399,12 @@ function ShoppingList({
   )
 }
 
-/** Inline item search that resolves to the xivapiId the craft-cost endpoint expects. */
+/**
+ * Inline item search that resolves a name to the xivapiId the craft-cost endpoint expects.
+ *
+ * Closing on blur is deferred briefly so that a click on a result registers before the list
+ * unmounts beneath the pointer.
+ */
 function ItemPicker({ onSelect }: { onSelect: (id: number) => void }) {
   const [query, setQuery] = React.useState('')
   const debounced = useDebounced(query, 250)
@@ -409,7 +428,6 @@ function ItemPicker({ onSelect }: { onSelect: (id: number) => void }) {
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}
-        // Delayed so a click on a result registers before the list unmounts.
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder="Search items…"
         className="pl-9"

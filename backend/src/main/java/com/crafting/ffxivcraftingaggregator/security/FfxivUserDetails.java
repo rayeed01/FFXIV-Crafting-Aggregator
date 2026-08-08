@@ -10,6 +10,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Adapts a {@link com.crafting.ffxivcraftingaggregator.domain.entity.User} to Spring Security.
+ *
+ * <p>Exposes the account id as well as the username, which is what lets controllers take the owner
+ * from the security context instead of trusting one supplied in a request.
+ */
 public record FfxivUserDetails(User user) implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

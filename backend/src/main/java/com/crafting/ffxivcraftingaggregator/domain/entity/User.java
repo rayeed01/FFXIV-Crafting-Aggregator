@@ -8,6 +8,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * A registered account.
+ *
+ * <p>The stored password is a bcrypt hash and never leaves this layer - {@code UserDto} has no
+ * field for it.
+ *
+ * <p>The default world and data center only seed the pricing scope for new work; saved lists carry
+ * their own. Role defaults to {@code USER}; there is no self-service route to {@code ADMIN}.
+ */
 @Getter
 @Setter
 @Builder

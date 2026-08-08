@@ -12,6 +12,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Tracks the state of the bulk XIVAPI import and hands the work to {@link BulkSyncRunner}.
+ *
+ * <p>State lives in atomics because the run happens on another thread while status is polled from
+ * request threads. The running flag is claimed with a compare-and-set rather than a check followed
+ * by a write, so two simultaneous start requests cannot both begin an import.
+ *
+ * <p>Progress is in-memory only, so it does not survive a restart: a sync interrupted by one
+ * leaves the flag cleared and its partial results in the database, and is simply run again.
+ */
 @Service
 @RequiredArgsConstructor
 public class XivapiSyncServiceImpl implements XivapiSyncService {

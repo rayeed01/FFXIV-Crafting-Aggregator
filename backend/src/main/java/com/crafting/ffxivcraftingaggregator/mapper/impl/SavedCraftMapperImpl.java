@@ -11,6 +11,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * Builds both crafting list shapes.
+ *
+ * <p>Both resolve the price scope here - the world when one is set, the data center otherwise - so
+ * the rule lives in one place rather than in every client.
+ */
 @Component
 @RequiredArgsConstructor
 public class SavedCraftMapperImpl implements SavedCraftMapper {

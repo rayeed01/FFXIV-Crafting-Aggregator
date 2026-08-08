@@ -12,6 +12,12 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
+/**
+ * Responds to authenticated requests that lack the required role.
+ *
+ * <p>The 403 counterpart to the authentication entry point, and present for the same reason: one
+ * error shape across the whole API.
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAccessDeniedHandler implements AccessDeniedHandler {

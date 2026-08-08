@@ -19,6 +19,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * World and data center validation against a cached snapshot of the world tables.
+ *
+ * <p>The snapshot is immutable and swapped wholesale rather than mutated, so a lookup in progress
+ * during a refresh sees a consistent view rather than a half-updated map. It is held in a volatile
+ * field and built lazily on first use, with the double-checked block ensuring one build rather
+ * than one per concurrent caller.
+ *
+ * <p>Names are normalised to lower case for lookup while the original casing is kept as the
+ * canonical form, which is what lets a caller type "aether" and still have "Aether" sent upstream.
+ */
 @Component
 @RequiredArgsConstructor
 public class WorldRegistryImpl implements WorldRegistry {

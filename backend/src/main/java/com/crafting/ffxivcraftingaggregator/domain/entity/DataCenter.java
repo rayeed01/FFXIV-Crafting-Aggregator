@@ -7,6 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * A group of worlds sharing one market board.
+ *
+ * <p>Pricing against a data center rather than a single world is frequently cheaper, since it sees
+ * every world's listings at once.
+ */
 @Getter
 @Setter
 @Builder

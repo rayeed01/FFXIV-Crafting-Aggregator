@@ -32,12 +32,12 @@ interface WorldDataCenterPickerProps {
 }
 
 /**
- * Paired data-center + world selectors.
+ * Paired data-center and world selectors, for the forms where both are required.
  *
- * The world list is filtered to the chosen data center, and changing the data center clears a
- * world that no longer belongs to it. The backend enforces this pairing with
- * WorldDataCenterMismatchException; filtering here means a user cannot construct the invalid
- * combination in the first place, rather than discovering it on submit.
+ * The world list is filtered to the chosen data center, and changing the data center drops a world
+ * that no longer belongs to it. Both are deliberate: the backend rejects a mismatched pair with
+ * WorldDataCenterMismatchException, so filtering here means the invalid combination cannot be
+ * constructed at all rather than being discovered on submit.
  */
 export function WorldDataCenterPicker({
   dataCenter,
@@ -89,7 +89,6 @@ export function WorldDataCenterPicker({
           value={dataCenter || undefined}
           disabled={disabled}
           onValueChange={(next) => {
-            // Dropping the world is deliberate: keeping it would submit a pair the backend rejects.
             const stillValid = (worldsByDataCenter.get(next) ?? []).some((w) => w.name === world)
             onChange({ dataCenter: next, world: stillValid ? world : '' })
           }}

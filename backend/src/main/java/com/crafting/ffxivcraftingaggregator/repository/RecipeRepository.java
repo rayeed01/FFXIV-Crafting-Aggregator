@@ -15,8 +15,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Recipes imported from XIVAPI, together with the queries that make tree traversal affordable.
+ */
 @NullMarked
 public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
+
+    /** One recipe with its result item and every ingredient already loaded. */
     @EntityGraph(attributePaths = {"resultItem", "recipeIngredients", "recipeIngredients.item"})
     @Override
     Optional<Recipe> findById(UUID id);
@@ -28,6 +33,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
     @EntityGraph(attributePaths = {"resultItem"})
     List<Recipe> findTop50ByResultItem_NameContainingIgnoreCaseOrderByResultItem_NameAsc(String name);
 
+    /** @param job an XIVAPI CraftType such as "Smithing", not a job name such as "Blacksmith" */
     @EntityGraph(attributePaths = {"resultItem"})
     List<Recipe> findByJobIgnoreCase(String job);
 
@@ -35,11 +41,24 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
 
     Optional<Recipe> findByXivapiId(int xivapiId);
 
+    /**
+     * Flags every item that some recipe produces as craftable, in one statement.
+     *
+     * <p>Run once at the end of a sync rather than per row: the flag is a denormalisation of "a
+     * recipe exists for this item", and maintaining it during the import would mean an update per
+     * recipe. It also cannot be set correctly until every recipe has landed.
+     */
     @Transactional
     @Modifying
     @Query("UPDATE Item i SET i.canBeCrafted = true where i.id IN (SELECT r.resultItem.id from Recipe r)")
     void markResultItemsCraftable();
 
+    /**
+     * Every recipe producing any of the given items, with result item and ingredients loaded.
+     *
+     * <p>This is what lets the cost tree be walked one level at a time: a whole tier of the tree
+     * is resolved in a single query, rather than one per item.
+     */
     @Query("""
         SELECT DISTINCT r FROM Recipe r
         JOIN FETCH r.resultItem

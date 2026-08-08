@@ -100,6 +100,19 @@ interface RequestOptions {
   skipAuthRedirect?: boolean
 }
 
+/**
+ * Issues a request against the API and unwraps the response.
+ *
+ * A 204, and any empty body, is returned as undefined rather than parsed - calling .json() on an
+ * empty response throws.
+ *
+ * On failure the body is parsed as the backend's ErrorResponse where possible, but that shape is
+ * not guaranteed: failures inside JwtAuthFilter bypass GlobalExceptionHandler entirely, which
+ * that class documents as a known gap. An unparseable body falls back to a status-derived
+ * message.
+ *
+ * @throws ApiError always, on any non-2xx response
+ */
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, signal, skipAuthRedirect } = options
 
@@ -115,14 +128,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   })
 
   if (response.ok) {
-    // 204 from DELETE, and any empty body, would throw on .json().
     if (response.status === 204) return undefined as T
     const text = await response.text()
     return (text ? JSON.parse(text) : undefined) as T
   }
 
-  // JwtAuthFilter failures bypass GlobalExceptionHandler (a documented gap in that class), so
-  // an error body is not guaranteed to be our ErrorResponse shape - fall back to the status.
   let message = `Request failed (${response.status})`
   let fieldErrors: FieldError[] = []
   try {

@@ -22,6 +22,17 @@ import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * Password authentication issuing JWTs.
+ *
+ * <p>Passwords are stored as bcrypt hashes through the injected encoder and are never held or
+ * logged in plain form. Sign-in delegates to Spring Security's {@code AuthenticationManager}
+ * rather than comparing hashes here, so the configured encoder and user lookup stay the single
+ * source of truth.
+ *
+ * <p>World and data center names are canonicalised at registration, so a stored default is always
+ * in the exact form Universalis expects.
+ */
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;

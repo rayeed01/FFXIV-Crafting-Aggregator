@@ -26,6 +26,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Universalis client for market prices and the server list.
+ *
+ * <p>Requests are split into chunks of {@code MAX_BATCH_SIZE} and the responses recombined,
+ * because the upstream endpoint silently returns only the first N ids rather than erroring on a
+ * larger request. Costing a deep recipe tree routinely exceeds that, so a caller that trusted the
+ * response would quietly lose ingredients.
+ *
+ * <p>Uses the aggregated endpoint, which reports NQ and HQ separately along with the world each
+ * cheapest listing sits on. Those two worlds frequently differ, so both are carried through rather
+ * than collapsed here.
+ *
+ * <p>Ids Universalis cannot resolve are reported as unresolved rather than dropped, so a caller
+ * can tell "no such item" from "no listing".
+ */
 @Component
 public class UniversalisClientImpl implements UniversalisClient {
     private static final int MAX_BATCH_SIZE = 100;

@@ -16,6 +16,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * Item lookups over the synced catalogue.
+ *
+ * <p>Search is capped and blank queries short-circuit to an empty list, so a stray request cannot
+ * ask the database for every row.
+ */
 public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;

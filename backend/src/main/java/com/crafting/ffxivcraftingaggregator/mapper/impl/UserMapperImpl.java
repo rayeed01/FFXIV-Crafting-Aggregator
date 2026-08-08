@@ -5,6 +5,12 @@ import com.crafting.ffxivcraftingaggregator.domain.entity.User;
 import com.crafting.ffxivcraftingaggregator.mapper.UserMapper;
 import org.springframework.stereotype.Component;
 
+/**
+ * Builds a profile response.
+ *
+ * <p>Copies fields individually rather than reflectively, so the password hash cannot be included
+ * by accident when a field is added.
+ */
 @Component
 public class UserMapperImpl implements UserMapper {
     @Override

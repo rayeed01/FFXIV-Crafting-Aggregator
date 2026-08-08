@@ -35,6 +35,13 @@ import { EmptyState, ErrorState, PageHeader } from '@/components/states'
 import { formatGil } from '@/lib/format'
 import type { SavedCraftCostDto, SavedCraftDto } from '@/types/api'
 
+/**
+ * A single crafting list: its recipes, its market, and its combined cost.
+ *
+ * Costing is triggered explicitly rather than on page load, because it fans out to Universalis for
+ * every ingredient in every recipe. Any change to the contents or the market clears a previously
+ * computed total, so a stale figure is never shown against edited contents.
+ */
 export function SavedCraftDetailPage() {
   const { savedCraftId } = useParams<{ savedCraftId: string }>()
 
@@ -53,8 +60,6 @@ export function SavedCraftDetailPage() {
   /** Any change to contents or scope invalidates a previously computed total. */
   const invalidateCost = React.useCallback(() => setCost(null), [])
 
-  // Costing hits Universalis for every ingredient, so it is triggered explicitly rather than
-  // firing on every page view.
   async function calculateCost() {
     if (!savedCraftId) return
     setCosting(true)
@@ -322,7 +327,17 @@ function EditListDialog({
   )
 }
 
-/** Multi-select recipe picker: stage a selection, then add them all in one request. */
+/**
+ * Multi-select recipe picker: stage a selection, then add it all in one request, which
+ * AddRecipeRequest already accepts as a list.
+ *
+ * The dialog is a bounded flex column so each section scrolls within its own limits. As a single
+ * scrolling block the staged selection grew without limit and pushed the search results off the
+ * bottom once a handful were picked.
+ *
+ * The results list needs min-h-0 as well as flex-1: a flex child defaults to min-height:auto and
+ * would otherwise refuse to shrink below its content, defeating the overflow entirely.
+ */
 function AddRecipesDialog({
   open,
   onOpenChange,
@@ -376,7 +391,6 @@ function AddRecipesDialog({
     if (selected.size === 0) return
     setSubmitting(true)
     try {
-      // One request for the whole selection - AddRecipeRequest already takes a list.
       await api.savedCrafts.addRecipes(craft.id, {
         recipes: [...selected.entries()].map(([recipeId, { quantity }]) => ({ recipeId, quantity })),
       })
@@ -392,11 +406,6 @@ function AddRecipesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/*
-        Flex column with a hard height, so each section scrolls inside its own bounds. Previously
-        the whole dialog was one scrolling block, which let the selected list grow without limit
-        and push the search results off the bottom once a handful were picked.
-      */}
       <DialogContent className="flex max-h-[85dvh] max-w-2xl flex-col gap-4">
         <DialogHeader className="shrink-0">
           <DialogTitle>Add recipes</DialogTitle>
@@ -431,7 +440,6 @@ function AddRecipesDialog({
                 Clear all
               </Button>
             </div>
-            {/* Capped at roughly four rows; beyond that this scrolls instead of growing. */}
             <ul className="max-h-36 space-y-2 overflow-y-auto pr-1">
               {[...selected.entries()].map(([recipeId, entry]) => (
                 <li key={recipeId} className="flex items-center gap-2 text-sm">
@@ -464,8 +472,6 @@ function AddRecipesDialog({
           </div>
         )}
 
-        {/* min-h-0 is required: a flex child defaults to min-height:auto and would refuse to
-            shrink below its content, defeating the overflow. */}
         <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border">
           {debounced.trim().length === 0 && (
             <p className="p-4 text-sm text-muted-foreground">Start typing to find recipes.</p>

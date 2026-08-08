@@ -6,8 +6,12 @@ import { cn } from '@/lib/utils'
 /**
  * Password field with a reveal toggle.
  *
- * Defaults to hidden and never persists the revealed state, so the shoulder-surfing protection
- * is intact unless the user deliberately asks to see what they typed.
+ * Defaults to hidden and never persists the revealed state, so shoulder-surfing protection is
+ * intact unless the user deliberately asks to see what they typed.
+ *
+ * The toggle is deliberately removed from the tab order: someone typing a password expects Tab to
+ * move to the submit button, not to a decoration. It stays reachable by mouse and by screen
+ * readers via its accessible name.
  */
 export const PasswordInput = React.forwardRef<
   HTMLInputElement,
@@ -26,8 +30,6 @@ export const PasswordInput = React.forwardRef<
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        // tabIndex -1 keeps Tab going straight from the field to submit, which is what someone
-        // typing a password expects; the button stays reachable by mouse and by screen readers.
         tabIndex={-1}
         aria-label={visible ? 'Hide password' : 'Show password'}
         title={visible ? 'Hide password' : 'Show password'}

@@ -14,6 +14,14 @@ import { cn } from '@/lib/utils'
  *
  * Saving uses addRecipes rather than a dedicated endpoint: the backend upserts, so re-sending an
  * existing recipeId overwrites its quantity.
+ *
+ * The draft quantity re-syncs whenever the parent refetches, so a change made elsewhere is not
+ * masked by stale local state. Input is clamped to the backend's Min(1)/Max(999) so the request
+ * cannot 400.
+ *
+ * @param onChanged fired after a successful save or removal, for the parent to refetch and drop
+ *                  any previously computed cost
+ * @param compact   tighter spacing, for the expandable cards on the lists index
  */
 export function RecipeQuantityRow({
   craftId,
@@ -39,7 +47,6 @@ export function RecipeQuantityRow({
   const [saving, setSaving] = React.useState(false)
   const [removing, setRemoving] = React.useState(false)
 
-  // Re-sync when the parent refetches, so an external change is not masked by local state.
   React.useEffect(() => setDraft(quantity), [quantity])
 
   const dirty = draft !== quantity
@@ -91,7 +98,6 @@ export function RecipeQuantityRow({
         min={1}
         max={999}
         value={draft}
-        // Clamped to the backend's @Min(1)/@Max(999) so the request cannot 400.
         onChange={(e) => setDraft(Math.max(1, Math.min(999, Number(e.target.value) || 1)))}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && dirty) void saveQuantity()

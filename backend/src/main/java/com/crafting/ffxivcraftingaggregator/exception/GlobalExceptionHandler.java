@@ -73,11 +73,13 @@ public class GlobalExceptionHandler {
      * Malformed or unparseable request body. Spring's own default here is a 400, but the catch-all
      * below is more specific than nothing and intercepts it - so a trailing comma in the JSON
      * came back as a server error until this was added.
+     *
+     * <p>The response deliberately does not echo {@code ex.getMessage()}: it carries parser
+     * internals and field names back out to the caller.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex){
         log.warn("Malformed request body: {}", ex.getMessage());
-        // Deliberately not ex.getMessage(): it echoes parser internals and field names back out.
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Malformed request body");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
@@ -128,10 +130,15 @@ public class GlobalExceptionHandler {
     // 401 / 403 - authentication and authorisation
     // ------------------------------------------------------------------
 
+    /**
+     * Failed sign-in.
+     *
+     * <p>Logged at WARN rather than ERROR because a wrong password is expected traffic, not
+     * something to be woken up for. Both exceptions share one message, since distinguishing
+     * "no such user" from "wrong password" confirms which usernames exist.
+     */
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleBadCredentialException(Exception ex){
-        // WARN, not ERROR: a wrong password is expected traffic, not something to be woken up for.
-        // One message for both, because distinguishing them confirms which usernames exist.
         log.warn("Failed authentication attempt");
         ErrorResponse error = new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), "Invalid username or password");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);

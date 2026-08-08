@@ -9,6 +9,11 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+/**
+ * Loads an account for Spring Security by username.
+ *
+ * <p>Username rather than id, because that is what a token carries as its subject.
+ */
 @Service
 @RequiredArgsConstructor
 public class FfxivUserDetailService implements UserDetailsService {

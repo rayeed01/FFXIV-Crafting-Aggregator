@@ -5,6 +5,13 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * The result of one price fetch: what was priced, and what could not be.
+ *
+ * <p>Unresolved ids are tracked separately rather than being left absent, so a caller can tell an
+ * item Universalis does not know from one that simply has no listing today. The two deserve
+ * very different cache lifetimes.
+ */
 public record UniversalisPrices(Map<Integer, ItemPrice> prices,
                                 Set<Integer> unresolved) {
 

@@ -19,6 +19,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Redis-backed market prices, falling through to Universalis on a miss.
+ *
+ * <p>Keys are scoped per market ({@code price:<scope>:<itemId>}) because the same item has a
+ * different price on every world and data center. A single entry holds both qualities, so asking
+ * for NQ or HQ never invalidates anything or costs an extra upstream call.
+ *
+ * <p>Three lifetimes, for three different kinds of answer. A real price and an item that is simply
+ * unlisted both go stale quickly, so both are held briefly. An id Universalis does not recognise
+ * will not start existing, so that is cached for far longer and stops a bad id being re-requested
+ * on every calculation.
+ *
+ * <p>Redis failures are logged and treated as a miss rather than propagated: a cache being down
+ * should make things slower, not broken.
+ */
 @Service
 @RequiredArgsConstructor
 public class MarketPriceServiceImpl implements MarketPriceService {

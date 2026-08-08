@@ -7,15 +7,20 @@ export const Dialog = DialogPrimitive.Root
 export const DialogTrigger = DialogPrimitive.Trigger
 export const DialogClose = DialogPrimitive.Close
 
+/**
+ * Scrim behind a dialog.
+ *
+ * The background is set as an explicit rgb() rather than a Tailwind colour utility: extensions
+ * that rewrite page colours handle a plain value predictably, where an oklch-derived one could be
+ * recomputed into something opaque. Defence in depth alongside the darkreader-lock meta tag in
+ * index.html.
+ */
 export const DialogOverlay = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    // Explicit rgb(...) rather than a Tailwind colour utility: extensions that rewrite colours
-    // handle a plain value predictably, where an oklch-derived one could be recomputed into
-    // something opaque. Defence in depth alongside the darkreader-lock tag in index.html.
     style={{ backgroundColor: 'rgb(0 0 0 / 0.55)' }}
     className={cn('fixed inset-0 z-50 backdrop-blur-[2px]', className)}
     {...props}
@@ -23,6 +28,13 @@ export const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+/**
+ * Centred dialog panel, portalled above its own overlay.
+ *
+ * Scrolls as a single block by default. A dialog with several sections that each need their own
+ * bounded scroll should override the display with a flex column and a max height, which
+ * tailwind-merge resolves in favour of the caller's classes.
+ */
 export const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>

@@ -26,6 +26,16 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+/**
+ * Imports the world and data center list from Universalis.
+ *
+ * <p>Data centers are written first, because a world row cannot be stored without the data center
+ * it points at. A world whose data center cannot be resolved is skipped and counted rather than
+ * failing the run - one malformed row upstream should not block the rest.
+ *
+ * <p>Finishes by refreshing the world registry, so newly imported worlds validate immediately
+ * instead of after the next restart.
+ */
 public class GameServerSyncServiceImpl implements GameServerSyncService {
 
     private final UniversalisClient universalisClient;

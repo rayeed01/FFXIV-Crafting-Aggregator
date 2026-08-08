@@ -13,6 +13,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * Builds both recipe shapes.
+ *
+ * <p>The summary form flattens the result item down to a name and icon, which is all a list view
+ * reads, and skips ingredients entirely.
+ */
 @Component
 @RequiredArgsConstructor
 public class RecipeMapperImpl implements RecipeMapper {

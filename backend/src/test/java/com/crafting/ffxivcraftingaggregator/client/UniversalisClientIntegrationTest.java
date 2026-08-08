@@ -84,6 +84,11 @@ class UniversalisClientIntegrationTest {
     // Core behaviour
     // ---------------------------------------------------------------------
 
+    /**
+     * The item id assertion is not redundant with the map key: the key is built from the response
+     * payload rather than the request, so if the itemId field ever stopped binding it would
+     * deserialise to 0 and every lookup would silently mis-key.
+     */
     @Test
     @DisplayName("returns usable price data for a commonly-listed item")
     void returnsPriceDataForKnownItem() {
@@ -94,8 +99,6 @@ class UniversalisClientIntegrationTest {
 
         ItemPrice price = result.prices().get(KNOWN_ITEM);
 
-        // The map key is built from the payload, not the request. If the itemId field ever failed
-        // to bind it would deserialise to 0 and every lookup would silently mis-key.
         assertThat(price.itemXivapiId()).isEqualTo(KNOWN_ITEM);
         assertThat(price.hasListing()).isTrue();
         assertThat(price.minPrice()).isNotNull().isPositive();
@@ -106,6 +109,10 @@ class UniversalisClientIntegrationTest {
      * for one id as for many - which is why the client no longer needs a single-item branch.
      * This pins that, since a regression would reintroduce the branch divergence.
      */
+    /**
+     * Prices may legitimately differ between the two calls if a listing sold in between, so only
+     * the structurally stable fields are compared.
+     */
     @Test
     @DisplayName("one id and many ids take the same code path")
     void singleAndMultiRequestsBehaveIdentically() {
@@ -114,8 +121,6 @@ class UniversalisClientIntegrationTest {
         ItemPrice together = client.getPrices(List.of(KNOWN_ITEM, SECOND_ITEM), DATA_CENTER)
                 .prices().get(KNOWN_ITEM);
 
-        // Prices may legitimately differ if a listing sold between the two calls, so only the
-        // structurally stable fields are compared.
         assertThat(together.itemXivapiId()).isEqualTo(alone.itemXivapiId());
         assertThat(together.hasListing()).isEqualTo(alone.hasListing());
     }
@@ -159,6 +164,10 @@ class UniversalisClientIntegrationTest {
      */
     @Test
     @DisplayName("minPrice is the cheaper of the NQ and HQ listings")
+    /**
+     * minPrice must not merely be less than or equal to both qualities - it has to actually BE
+     * one of them, rather than some third number arrived at by averaging or rounding.
+     */
     void minPriceIsTheCheaperQuality() {
         UniversalisPrices result = client.getPrices(List.of(KNOWN_ITEM, SECOND_ITEM), DATA_CENTER);
 
@@ -169,7 +178,6 @@ class UniversalisClientIntegrationTest {
             if (price.minPriceHq() != null) {
                 assertThat(price.minPrice()).isLessThanOrEqualTo(price.minPriceHq());
             }
-            // And it must actually BE one of them, not some third number.
             assertThat(price.minPrice())
                     .isIn(price.minPriceNq(), price.minPriceHq());
         });
@@ -212,6 +220,11 @@ class UniversalisClientIntegrationTest {
     // The 100-item cap
     // ---------------------------------------------------------------------
 
+    /**
+     * The original bug returned exactly the first 100 ids and dropped the rest without error, so
+     * the assertion looks for an id past the chunk boundary: one at or beyond 5100 can only have
+     * come from a second request.
+     */
     @Test
     @DisplayName("batches larger than the cap are chunked, not silently truncated")
     void largeBatchIsChunkedNotTruncated() {
@@ -219,8 +232,6 @@ class UniversalisClientIntegrationTest {
 
         UniversalisPrices result = client.getPrices(ids, DATA_CENTER);
 
-        // The original bug returned exactly the first 100 ids and dropped the rest without error.
-        // An id at or beyond 5100 can only have come from a second request.
         assertThat(result.prices().keySet())
                 .as("ids past the chunk boundary must survive")
                 .anySatisfy(id -> assertThat(id).isGreaterThanOrEqualTo(5100));
@@ -272,6 +283,10 @@ class UniversalisClientIntegrationTest {
         assertThat(worlds).anySatisfy(world -> assertThat(world.name()).isEqualTo(WORLD));
     }
 
+    /**
+     * The world-to-data-centre relationship only exists on this side of the API - a world does
+     * not know its data centre - so an empty worlds array here would break the sync entirely.
+     */
     @Test
     @DisplayName("data centres carry the world ids the sync needs to resolve relationships")
     void dataCentresCarryWorldIds() {
@@ -279,8 +294,6 @@ class UniversalisClientIntegrationTest {
 
         assertThat(dataCenters).isNotEmpty();
 
-        // The relationship only exists on this side of the API - worlds do not know their data
-        // centre - so an empty worlds array here would break the sync entirely.
         assertThat(dataCenters).allSatisfy(dc -> {
             assertThat(dc.name()).isNotBlank();
             assertThat(dc.worlds()).isNotNull();

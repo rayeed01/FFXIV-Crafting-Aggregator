@@ -24,6 +24,12 @@ import { formatRelative } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { SavedCraftSummaryDto } from '@/types/api'
 
+/**
+ * Index of the user's crafting lists.
+ *
+ * The grid uses items-start so a row does not stretch every card to match its tallest sibling,
+ * which would otherwise make a neighbouring card grow whenever one was expanded.
+ */
 export function SavedCraftsPage() {
   const { user } = useAuth()
   const { data, error, loading, reload } = useAsync((signal) => api.savedCrafts.list(signal), [])
@@ -65,8 +71,6 @@ export function SavedCraftsPage() {
       )}
 
       {!loading && !error && (data?.length ?? 0) > 0 && (
-        // items-start stops a grid row from stretching every card to match its tallest sibling,
-        // which is what made the neighbouring card grow when one was expanded.
         <div className="grid items-start gap-3 sm:grid-cols-2">
           {data!.map((craft) => (
             <SavedCraftCard key={craft.id} craft={craft} onChanged={reload} />
@@ -85,13 +89,21 @@ export function SavedCraftsPage() {
   )
 }
 
+/**
+ * One list, as a card that can expand to reveal and edit its recipe quantities.
+ *
+ * Contents are fetched on first expand rather than eagerly: the summary endpoint returns only a
+ * count, so loading every card's recipes up front would be one request per card on page load.
+ *
+ * The whole card is a link, laid over the content rather than wrapping it, so that the delete
+ * button and the quantity inputs are never nested inside an anchor. Those controls are lifted
+ * above the overlay so they remain clickable.
+ */
 function SavedCraftCard({ craft, onChanged }: { craft: SavedCraftSummaryDto; onChanged: () => void }) {
   const [deleting, setDeleting] = React.useState(false)
   const [confirming, setConfirming] = React.useState(false)
   const [expanded, setExpanded] = React.useState(false)
 
-  // The summary endpoint returns only a count, so contents are fetched on first expand rather
-  // than eagerly for every card on the page.
   const { data: detail, loading: detailLoading, error: detailError, reload } = useAsync(
     (signal) => api.savedCrafts.byId(craft.id, signal),
     [craft.id],
@@ -114,8 +126,6 @@ function SavedCraftCard({ craft, onChanged }: { craft: SavedCraftSummaryDto; onC
 
   return (
     <>
-      {/* The whole card is the link. The delete control sits above it rather than inside, so a
-          nested interactive element never ends up inside an anchor. */}
       <Card className="relative transition-shadow focus-within:ring-2 focus-within:ring-ring hover:shadow-md">
         <CardContent className="flex h-full flex-col gap-3 p-5">
           <Link
@@ -165,7 +175,6 @@ function SavedCraftCard({ craft, onChanged }: { craft: SavedCraftSummaryDto; onC
           </div>
 
           {expanded && (
-            // z-10 lifts this above the full-card link so the inputs are actually clickable.
             <div className="relative z-10 border-t border-border pt-2">
               {detailLoading && <Skeleton className="h-10 w-full" />}
               {detailError && (

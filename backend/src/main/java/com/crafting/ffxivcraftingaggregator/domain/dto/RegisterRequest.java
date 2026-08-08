@@ -5,6 +5,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * New account details.
+ *
+ * <p>The default world and data center are required and must be consistent with each other: they
+ * seed the pricing scope, and a market that does not exist would only fail later at pricing
+ * time.
+ */
 public record RegisterRequest(@NotBlank(message = "Username is required")
                               @Size(min = 3, max = 20, message = "Username must be between {min} and {max} characters")
                               @Pattern(regexp = "^[\\w\\s]+$", message = "Username can only have letters, numbers, and spaces")

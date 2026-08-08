@@ -18,6 +18,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * Recipe lookups over the synced catalogue.
+ *
+ * <p>Search returns summaries rather than full recipes, and is capped for the same reason as item
+ * search.
+ */
 public class RecipeServiceImpl implements RecipeService {
 
     private final RecipeRepository recipeRepository;

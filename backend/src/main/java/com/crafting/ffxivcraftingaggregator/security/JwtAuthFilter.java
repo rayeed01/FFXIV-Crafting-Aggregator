@@ -15,6 +15,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Reads the bearer token on each request and populates the security context.
+ *
+ * <p>Runs before the username/password filter and stays silent when there is no token, so public
+ * endpoints are unaffected and an anonymous request simply proceeds without a principal.
+ *
+ * <p>Exceptions raised here bypass the global handler entirely - filters run before the dispatcher
+ * - which is why the authentication entry point exists to produce a matching error body.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j

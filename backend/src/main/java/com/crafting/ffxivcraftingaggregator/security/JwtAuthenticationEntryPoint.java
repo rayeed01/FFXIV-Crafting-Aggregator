@@ -12,6 +12,13 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
+/**
+ * Responds to unauthenticated requests for a protected resource.
+ *
+ * <p>Exists so a missing or expired token produces the same error shape as every other failure.
+ * Without it those requests return Spring Security's default body, and a client would need two
+ * parsers for one API.
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {

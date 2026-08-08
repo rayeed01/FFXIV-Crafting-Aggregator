@@ -8,6 +8,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * A user's named crafting list.
+ *
+ * <p>{@code world} is nullable: a list priced across a whole data center has no single world, and
+ * the derived price scope falls back to the data center in that case.
+ *
+ * <p>Lines cascade from here, so adding or removing recipes is done through this entity rather
+ * than against the join table directly.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
