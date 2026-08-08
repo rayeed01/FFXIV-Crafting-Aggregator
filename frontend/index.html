@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Dark Reader's documented opt-out. This app ships its own dark theme with a toggle, so a
+      second pass on top of it only causes damage: it flattened the table borders and turned the
+      semi-transparent dialog overlay into an opaque wash. The tag makes the extension stand down
+      and leave the built-in theme alone.
+    -->
+    <meta name="darkreader-lock" />
+    <title>Craftwise — FFXIV crafting costs</title>
+    <script>
+      // Applied before first paint so a dark-mode reload never flashes white.
+      (function () {
+        try {
+          var stored = localStorage.getItem('ffxiv-theme')
+          var dark = stored ? stored === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches
+          if (dark) document.documentElement.classList.add('dark')
+        } catch (e) { /* private mode - fall through to light */ }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

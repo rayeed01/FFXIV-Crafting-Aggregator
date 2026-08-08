@@ -10,6 +10,18 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# Node / frontend
+# Unanchored so they match frontend/ too - the /dist/ entry further down is root-only.
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
 # IntelliJ
 .idea/
 *.iws

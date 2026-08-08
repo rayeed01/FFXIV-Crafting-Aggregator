@@ -1,0 +1,152 @@
+@import 'tailwindcss';
+
+/* Tailwind v4 has no tailwind.config.js here - the dark variant is declared in CSS.
+   Class-based (not media-based) so the header toggle can override the OS setting. */
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Light is the default palette, per the chosen direction: neutral grays, one indigo accent,
+  generous whitespace. Every token is defined here on :root so no color exists only inside
+  the dark block - the dark section below redefines the same names, nothing new.
+*/
+:root {
+  /* Tells the browser - and dark-mode extensions such as Dark Reader - which scheme this page
+     already implements. Without it those extensions assume the page is light-only and invert it
+     a second time, which is what flattened the table borders into invisibility. */
+  color-scheme: light;
+
+  --background: oklch(0.995 0 0);
+  --foreground: oklch(0.21 0.02 264);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.02 264);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.02 264);
+
+  /* indigo-600 - the single accent */
+  --primary: oklch(0.51 0.23 277);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.97 0.003 264);
+  --secondary-foreground: oklch(0.28 0.03 264);
+
+  --muted: oklch(0.97 0.003 264);
+  --muted-foreground: oklch(0.55 0.02 264);
+
+  --accent: oklch(0.96 0.015 277);
+  --accent-foreground: oklch(0.36 0.14 277);
+
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.6 0.14 155);
+  --success-foreground: oklch(0.99 0 0);
+
+  --warning: oklch(0.72 0.16 70);
+  --warning-foreground: oklch(0.21 0.02 264);
+
+  --border: oklch(0.92 0.004 264);
+  --input: oklch(0.92 0.004 264);
+  --ring: oklch(0.51 0.23 277);
+
+  --radius: 0.625rem;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: oklch(0.17 0.015 264);
+  --foreground: oklch(0.97 0.003 264);
+
+  --card: oklch(0.21 0.018 264);
+  --card-foreground: oklch(0.97 0.003 264);
+
+  --popover: oklch(0.21 0.018 264);
+  --popover-foreground: oklch(0.97 0.003 264);
+
+  /* Lifted toward indigo-500: indigo-600 on a dark ground fails contrast on small text. */
+  --primary: oklch(0.62 0.21 277);
+  --primary-foreground: oklch(0.15 0.02 264);
+
+  --secondary: oklch(0.27 0.02 264);
+  --secondary-foreground: oklch(0.97 0.003 264);
+
+  --muted: oklch(0.27 0.02 264);
+  --muted-foreground: oklch(0.71 0.015 264);
+
+  --accent: oklch(0.3 0.05 277);
+  --accent-foreground: oklch(0.9 0.05 277);
+
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.15 0.02 264);
+
+  --success: oklch(0.7 0.15 155);
+  --success-foreground: oklch(0.15 0.02 264);
+
+  --warning: oklch(0.78 0.15 70);
+  --warning-foreground: oklch(0.15 0.02 264);
+
+  /* Lifted from 0.30: row separators in a dense list were only just distinguishable from the
+     card behind them, and any extra processing on top wiped them out entirely. Inputs stay
+     brighter still so a field's edge reads as an edge. */
+  --border: oklch(0.38 0.022 264);
+  --input: oklch(0.44 0.025 264);
+  --ring: oklch(0.62 0.21 277);
+}
+
+/* Bridge the raw variables into Tailwind's color system so bg-card, text-muted-foreground
+   etc. resolve. `inline` keeps them resolving per-scope, which is what makes .dark work. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Gil figures are compared column-to-column constantly; tabular figures stop digits
+     from shifting width and making equal-length numbers look misaligned. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
