@@ -1,5 +1,6 @@
 package com.crafting.ffxivcraftingaggregator.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -18,17 +19,23 @@ import java.util.List;
 public class CorsConfig {
 
     /**
-     * Allows the local development frontends to call the API.
+     * Comma-separated list of allowed origins, injected via the cors.allowed-origins property.
+     * Defaults to the local dev frontends so nothing changes for local development; production
+     * sets CORS_ALLOWED_ORIGINS to the deployed frontend's real domain.
+     */
+    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    private String allowedOrigins;
+
+    /**
+     * Allows approved frontends to call the API.
      *
      * <p>Origins are listed explicitly rather than wildcarded: requests carry an Authorization
      * header, and a wildcard origin with credentials is both rejected by browsers and a bad idea.
-     *
-     * <p>A deployed frontend needs its origin added here.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+        config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setMaxAge(3600L);
