@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { ThemeProvider } from '@/context/ThemeContext'
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/react"
 import { App } from '@/App'
 import '@/index.css'
 
@@ -17,6 +19,8 @@ createRoot(container).render(
         <AuthProvider>
           <App />
           <Toaster position="bottom-right" richColors closeButton />
+          <Analytics />
+          <SpeedInsights />
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
