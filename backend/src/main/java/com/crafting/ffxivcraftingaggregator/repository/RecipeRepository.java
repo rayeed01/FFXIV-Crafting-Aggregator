@@ -4,6 +4,7 @@ import com.crafting.ffxivcraftingaggregator.domain.entity.Item;
 import com.crafting.ffxivcraftingaggregator.domain.entity.Recipe;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -29,9 +30,33 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
     @EntityGraph(attributePaths = {"resultItem"})
     List<Recipe> findByResultItem_NameContainingIgnoreCase(String name);
 
-    /** Capped variant for the search endpoint - see the note on ItemRepository's Top50 query. */
-    @EntityGraph(attributePaths = {"resultItem"})
-    List<Recipe> findTop50ByResultItem_NameContainingIgnoreCaseOrderByResultItem_NameAsc(String name);
+    /**
+     * Relevance-ranked search on the result item's name.
+     *
+     * <p>Mirrors {@code ItemRepository.searchByRelevance} exactly - same four tiers, same
+     * tie-breaks - so the two halves of a merged search result agree on what "most relevant"
+     * means. See that method for why ranking replaced plain alphabetical ordering.
+     *
+     * <p>Joins rather than using an entity graph, because the ordering references the joined
+     * item's name and the join has to be explicit for that.
+     *
+     * @param q already escaped for LIKE; see {@code RecipeServiceImpl.escapeLikeWildcards}
+     */
+    @Query("""
+        SELECT r FROM Recipe r
+        JOIN FETCH r.resultItem item
+        WHERE LOWER(item.name) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '\\'
+        ORDER BY
+          CASE
+            WHEN LOWER(item.name) = LOWER(:q) THEN 0
+            WHEN LOWER(item.name) LIKE LOWER(CONCAT(:q, '%')) ESCAPE '\\' THEN 1
+            WHEN LOWER(item.name) LIKE LOWER(CONCAT('% ', :q, '%')) ESCAPE '\\' THEN 2
+            ELSE 3
+          END,
+          LENGTH(item.name),
+          item.name
+        """)
+    List<Recipe> searchByRelevance(@Param("q") String q, Pageable pageable);
 
     /** @param job an XIVAPI CraftType such as "Smithing", not a job name such as "Blacksmith" */
     @EntityGraph(attributePaths = {"resultItem"})

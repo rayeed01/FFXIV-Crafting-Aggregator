@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/dialog'
 import { SavedCraftFormFields, useSavedCraftForm } from '@/components/SavedCraftForm'
 import { RecipeQuantityRow } from '@/components/RecipeQuantityRow'
+import { PendingChangesBar } from '@/components/PendingChangesBar'
+import { usePendingQuantities } from '@/hooks/usePendingQuantities'
 import { JobIcon } from '@/components/JobIcon'
 import { jobName } from '@/lib/jobs'
 import { CraftCostTree } from '@/components/CraftCostTree'
@@ -150,6 +152,13 @@ export function SavedCraftDetailPage() {
   )
 }
 
+/**
+ * The list's recipes, with quantities editable in bulk.
+ *
+ * Edits accumulate in {@link usePendingQuantities} and are saved from a bar pinned to the
+ * viewport, so the save control is always in the same place and never appears beneath the cursor
+ * that just changed a value.
+ */
 function RecipeSection({
   craft,
   onChanged,
@@ -161,6 +170,13 @@ function RecipeSection({
   invalidateCost: () => void
   onAdd: () => void
 }) {
+  const pendingSave = React.useCallback(() => {
+    invalidateCost()
+    onChanged()
+  }, [invalidateCost, onChanged])
+
+  const pending = usePendingQuantities(craft.id, pendingSave)
+
   if (craft.recipes.length === 0) {
     return (
       <section className="space-y-3">
@@ -193,7 +209,10 @@ function RecipeSection({
               job={entry.recipe.job}
               level={entry.recipe.level}
               quantity={entry.quantity}
-              onChanged={() => {
+              value={pending.valueFor(entry.recipe.id, entry.quantity)}
+              dirty={pending.isDirty(entry.recipe.id)}
+              onQuantityChange={(next) => pending.setQuantity(entry.recipe.id, next, entry.quantity)}
+              onRemoved={() => {
                 invalidateCost()
                 onChanged()
               }}
@@ -201,6 +220,14 @@ function RecipeSection({
           </li>
         ))}
       </ul>
+
+      <PendingChangesBar
+        variant="pinned"
+        count={pending.count}
+        saving={pending.saving}
+        onSave={pending.saveAll}
+        onDiscard={pending.discard}
+      />
     </section>
   )
 }
@@ -425,54 +452,10 @@ function AddRecipesDialog({
           />
         </div>
 
-        {selected.size > 0 && (
-          <div className="shrink-0 space-y-2 rounded-md border border-border bg-secondary/40 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Selected ({selected.size})
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs text-muted-foreground"
-                onClick={() => setSelected(new Map())}
-              >
-                Clear all
-              </Button>
-            </div>
-            <ul className="max-h-36 space-y-2 overflow-y-auto pr-1">
-              {[...selected.entries()].map(([recipeId, entry]) => (
-                <li key={recipeId} className="flex items-center gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate" title={entry.name}>
-                    {entry.name}
-                  </span>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={999}
-                    value={entry.quantity}
-                    onChange={(e) =>
-                      setQuantity(recipeId, Math.max(1, Math.min(999, Number(e.target.value) || 1)))
-                    }
-                    className="h-8 w-20"
-                    aria-label={`Quantity for ${entry.name}`}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 shrink-0"
-                    aria-label={`Deselect ${entry.name}`}
-                    onClick={() => toggle(recipeId, entry.name)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border">
+        {/* Two independently-scrolling columns. The selection lives in its own column rather than
+            above the results, so ticking a box cannot push the list someone is reading. */}
+        <div className="grid min-h-0 flex-1 gap-3 sm:grid-cols-[1fr_18rem]">
+        <div className="min-h-0 overflow-y-auto rounded-md border border-border">
           {debounced.trim().length === 0 && (
             <p className="p-4 text-sm text-muted-foreground">Start typing to find recipes.</p>
           )}
@@ -512,6 +495,61 @@ function AddRecipesDialog({
               )
             })}
           </ul>
+        </div>
+
+          <div className="flex min-h-0 flex-col rounded-md border border-border bg-secondary/30">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Selected ({selected.size})
+              </p>
+              {selected.size > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground"
+                  onClick={() => setSelected(new Map())}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+
+            {selected.size === 0 ? (
+              <p className="p-3 text-xs text-muted-foreground">
+                Tick recipes on the left to add them.
+              </p>
+            ) : (
+              <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+                {[...selected.entries()].map(([recipeId, entry]) => (
+                  <li key={recipeId} className="flex items-center gap-2 text-sm">
+                    <span className="min-w-0 flex-1 truncate" title={entry.name}>
+                      {entry.name}
+                    </span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={999}
+                      value={entry.quantity}
+                      onChange={(e) =>
+                        setQuantity(recipeId, Math.max(1, Math.min(999, Number(e.target.value) || 1)))
+                      }
+                      className="h-8 w-16"
+                      aria-label={`Quantity for ${entry.name}`}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 shrink-0"
+                      aria-label={`Deselect ${entry.name}`}
+                      onClick={() => toggle(recipeId, entry.name)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         <DialogFooter className="shrink-0">

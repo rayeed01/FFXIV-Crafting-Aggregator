@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/dialog'
 import { SavedCraftFormFields, useSavedCraftForm } from '@/components/SavedCraftForm'
 import { RecipeQuantityRow } from '@/components/RecipeQuantityRow'
+import { PendingChangesBar } from '@/components/PendingChangesBar'
+import { usePendingQuantities } from '@/hooks/usePendingQuantities'
 import { EmptyState, ErrorState, PageHeader } from '@/components/states'
 import { formatRelative } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -110,6 +112,13 @@ function SavedCraftCard({ craft, onChanged }: { craft: SavedCraftSummaryDto; onC
     expanded,
   )
 
+  const afterSave = React.useCallback(() => {
+    reload()
+    onChanged()
+  }, [reload, onChanged])
+
+  const pending = usePendingQuantities(craft.id, afterSave)
+
   async function handleDelete() {
     setDeleting(true)
     try {
@@ -166,9 +175,15 @@ function SavedCraftCard({ craft, onChanged }: { craft: SavedCraftSummaryDto; onC
                 size="sm"
                 onClick={() => setExpanded((v) => !v)}
                 aria-expanded={expanded}
-                className="relative z-10 ml-auto h-7 gap-1 px-2 text-xs text-muted-foreground"
+                className={cn(
+                  'relative z-10 ml-auto h-7 gap-1 px-2 text-xs',
+                  pending.count > 0 ? 'text-primary' : 'text-muted-foreground',
+                )}
               >
                 {expanded ? 'Hide' : 'Items'}
+                {/* Surfaced on the collapsed toggle too, so folding a card away cannot hide
+                    unsaved edits with no indication they are still there. */}
+                {pending.count > 0 && <span>· {pending.count} unsaved</span>}
                 <ChevronDown className={cn('size-3.5 transition-transform', expanded && 'rotate-180')} />
               </Button>
             )}
@@ -181,25 +196,45 @@ function SavedCraftCard({ craft, onChanged }: { craft: SavedCraftSummaryDto; onC
                 <p className="py-2 text-sm text-destructive">{detailError.message}</p>
               )}
               {detail && (
-                <ul className="divide-y divide-border">
-                  {detail.recipes.map((entry) => (
-                    <li key={entry.recipe.id}>
-                      <RecipeQuantityRow
-                        compact
-                        craftId={craft.id}
-                        recipeId={entry.recipe.id}
-                        name={entry.recipe.resultItem.name}
-                        job={entry.recipe.job}
-                        level={entry.recipe.level}
-                        quantity={entry.quantity}
-                        onChanged={() => {
-                          reload()
-                          onChanged()
-                        }}
+                <>
+                  <ul className="divide-y divide-border">
+                    {detail.recipes.map((entry) => (
+                      <li key={entry.recipe.id}>
+                        <RecipeQuantityRow
+                          compact
+                          craftId={craft.id}
+                          recipeId={entry.recipe.id}
+                          name={entry.recipe.resultItem.name}
+                          job={entry.recipe.job}
+                          level={entry.recipe.level}
+                          quantity={entry.quantity}
+                          value={pending.valueFor(entry.recipe.id, entry.quantity)}
+                          dirty={pending.isDirty(entry.recipe.id)}
+                          onQuantityChange={(next) =>
+                            pending.setQuantity(entry.recipe.id, next, entry.quantity)
+                          }
+                          onRemoved={() => {
+                            reload()
+                            onChanged()
+                          }}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Inline rather than pinned: several cards can be open at once, and a floating
+                      bar would not say which list it was about to save. */}
+                  {pending.count > 0 && (
+                    <div className="pt-2">
+                      <PendingChangesBar
+                        count={pending.count}
+                        saving={pending.saving}
+                        onSave={pending.saveAll}
+                        onDiscard={pending.discard}
                       />
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

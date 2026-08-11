@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Link } from 'react-router-dom'
-import { Check, Loader2, Trash2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiError, api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -12,16 +12,20 @@ import { cn } from '@/lib/utils'
 /**
  * One root recipe in a list, with its quantity editable in place.
  *
- * Saving uses addRecipes rather than a dedicated endpoint: the backend upserts, so re-sending an
- * existing recipeId overwrites its quantity.
+ * The quantity is controlled by the parent, which collects edits across rows and saves them
+ * together - see {@code usePendingQuantities}. This row therefore never saves and never shows a
+ * save button: a button appearing mid-row landed directly under the cursor that had just changed
+ * the value.
  *
- * The draft quantity re-syncs whenever the parent refetches, so a change made elsewhere is not
- * masked by stale local state. Input is clamped to the backend's Min(1)/Max(999) so the request
- * cannot 400.
+ * An edited row is marked with a dot rather than by adding or resizing any control, so the layout
+ * cannot shift while it is being used.
  *
- * @param onChanged fired after a successful save or removal, for the parent to refetch and drop
- *                  any previously computed cost
- * @param compact   tighter spacing, for the expandable cards on the lists index
+ * Removal is immediate and independent of pending edits, since it is unambiguous and reversible
+ * by re-adding.
+ *
+ * @param quantity saved value, used to decide whether the row is dirty
+ * @param value    what to display - the pending edit if there is one, otherwise {@code quantity}
+ * @param compact  tighter spacing, for the expandable cards on the lists index
  */
 export function RecipeQuantityRow({
   craftId,
@@ -30,7 +34,10 @@ export function RecipeQuantityRow({
   job,
   level,
   quantity,
-  onChanged,
+  value,
+  dirty,
+  onQuantityChange,
+  onRemoved,
   compact = false,
 }: {
   craftId: string
@@ -39,38 +46,20 @@ export function RecipeQuantityRow({
   job: string
   level: number
   quantity: number
-  /** Called after a successful save or removal, so the parent can refetch and drop stale costs. */
-  onChanged: () => void
+  value: number
+  dirty: boolean
+  onQuantityChange: (next: number) => void
+  onRemoved: () => void
   compact?: boolean
 }) {
-  const [draft, setDraft] = React.useState(quantity)
-  const [saving, setSaving] = React.useState(false)
   const [removing, setRemoving] = React.useState(false)
-
-  React.useEffect(() => setDraft(quantity), [quantity])
-
-  const dirty = draft !== quantity
-
-  async function saveQuantity() {
-    setSaving(true)
-    try {
-      await api.savedCrafts.addRecipes(craftId, { recipes: [{ recipeId, quantity: draft }] })
-      toast.success(`${name} set to ×${draft}`)
-      onChanged()
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Could not update the quantity.')
-      setDraft(quantity)
-    } finally {
-      setSaving(false)
-    }
-  }
 
   async function remove() {
     setRemoving(true)
     try {
       await api.savedCrafts.removeRecipes(craftId, { recipeIds: [recipeId] })
       toast.success(`Removed ${name}`)
-      onChanged()
+      onRemoved()
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Could not remove that recipe.')
       setRemoving(false)
@@ -97,29 +86,30 @@ export function RecipeQuantityRow({
         type="number"
         min={1}
         max={999}
-        value={draft}
-        onChange={(e) => setDraft(Math.max(1, Math.min(999, Number(e.target.value) || 1)))}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && dirty) void saveQuantity()
-        }}
-        className={cn('w-20', compact && 'h-8')}
+        value={value}
+        onChange={(e) => onQuantityChange(Math.max(1, Math.min(999, Number(e.target.value) || 1)))}
+        className={cn('w-20', compact && 'h-8', dirty && 'border-primary')}
         aria-label={`Quantity for ${name}`}
-        disabled={saving || removing}
+        disabled={removing}
       />
 
-      {dirty && (
-        <Button size="sm" onClick={saveQuantity} disabled={saving} className={cn(compact && 'h-8')}>
-          {saving ? <Loader2 className="animate-spin" /> : <Check />}
-          Save
-        </Button>
-      )}
+      {/* Fixed-width slot so the dot's presence never shifts the row. */}
+      <span className="flex w-2 shrink-0 justify-center">
+        {dirty && (
+          <span
+            className="size-2 rounded-full bg-primary"
+            title={`Unsaved: was ${quantity}`}
+            aria-label="Unsaved change"
+          />
+        )}
+      </span>
 
       <Button
         variant="ghost"
         size="icon"
         aria-label={`Remove ${name}`}
         onClick={remove}
-        disabled={removing || saving}
+        disabled={removing}
         className={cn('text-muted-foreground hover:text-destructive', compact && 'size-8')}
       >
         {removing ? <Loader2 className="animate-spin" /> : <Trash2 />}

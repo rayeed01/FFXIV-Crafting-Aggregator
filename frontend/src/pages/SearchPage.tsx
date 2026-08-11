@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Calculator, Hammer, ScrollText, Search as SearchIcon } from 'lucide-react'
+import { Calculator, Hammer, ListPlus, Loader2, ScrollText, Search as SearchIcon } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAsync, useDebounced } from '@/hooks/useAsync'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ItemIcon } from '@/components/ItemIcon'
 import { JobIcon } from '@/components/JobIcon'
 import { jobName } from '@/lib/jobs'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
+import { AddToListDialog } from '@/components/AddToListDialog'
 import { EmptyState, ErrorState, PageHeader } from '@/components/states'
 import type { ItemDto, RecipeSummaryDto } from '@/types/api'
 
@@ -37,7 +40,14 @@ interface SearchResult {
  * result set look arbitrary. Such a row has no xivapiId and so cannot offer a cost link.
  *
  * The presence of a recipe is treated as craftability regardless of what the item row claimed.
- * Craftable items sort first, being the ones the calculator can act on.
+ *
+ * Order is the backend's, deliberately. Both endpoints rank by relevance - exact name, then
+ * starts-with, then a later word starting with the term, then anywhere - and re-sorting here
+ * would throw that away and put the alphabetically-first substring match on top, which is what
+ * made a search for "g" return a page of items beginning with A.
+ *
+ * A Map preserves insertion order, so items keep their rank and recipe-only matches follow. A
+ * recipe matching an item already present updates that row in place rather than moving it.
  */
 function mergeResults(items: ItemDto[], recipes: RecipeSummaryDto[]): SearchResult[] {
   const byName = new Map<string, SearchResult>()
@@ -79,10 +89,7 @@ function mergeResults(items: ItemDto[], recipes: RecipeSummaryDto[]): SearchResu
     }
   }
 
-  return [...byName.values()].sort((a, b) => {
-    if (a.canBeCrafted !== b.canBeCrafted) return a.canBeCrafted ? -1 : 1
-    return a.name.localeCompare(b.name)
-  })
+  return [...byName.values()]
 }
 
 /**
@@ -100,6 +107,10 @@ function mergeResults(items: ItemDto[], recipes: RecipeSummaryDto[]): SearchResu
 export function SearchPage() {
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
+  const { isAuthenticated } = useAuth()
+
+  /** The recipe whose "add to list" dialog is open, if any. */
+  const [addTarget, setAddTarget] = React.useState<{ recipeId: string; name: string } | null>(null)
 
   const [draft, setDraft] = React.useState(query)
   const debounced = useDebounced(draft, 250)
@@ -140,10 +151,15 @@ export function SearchPage() {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Search items and recipes…"
-          className="h-11 pl-9"
+          className="h-11 pl-9 pr-10"
           autoFocus
           aria-label="Search items and recipes"
         />
+        {/* Progress lives here rather than over the results, so a refetch is visible without the
+            list itself moving or disappearing. */}
+        {enabled && loading && (
+          <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+        )}
       </div>
 
       {!enabled && (
@@ -154,7 +170,10 @@ export function SearchPage() {
         />
       )}
 
-      {enabled && loading && (
+      {/* Skeletons only when there is nothing to show yet. useAsync keeps the previous results
+          during a refetch, so on later keystrokes those stay visible and merely dim - swapping
+          them for skeletons on every keystroke made the whole page flicker while typing. */}
+      {enabled && loading && results.length === 0 && (
         <div className="space-y-2">
           {Array.from({ length: 6 }, (_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
@@ -168,9 +187,14 @@ export function SearchPage() {
         <EmptyState title="Nothing matched" description="Try a shorter or differently spelled term." />
       )}
 
-      {enabled && !loading && !error && results.length > 0 && (
+      {enabled && !error && results.length > 0 && (
         <>
-          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+          <ul
+            className={cn(
+              'divide-y divide-border overflow-hidden rounded-xl border border-border bg-card transition-opacity',
+              loading && 'opacity-60',
+            )}
+          >
             {results.map((result) => (
               <li key={result.key} className="flex items-center gap-3 p-3">
                 <ItemIcon src={result.iconUrl} alt={result.name} />
@@ -201,6 +225,20 @@ export function SearchPage() {
                 )}
 
                 <div className="flex shrink-0 items-center gap-1">
+                  {/* Only recipes can go in a list, and only a signed-in user has lists. */}
+                  {result.recipeId && isAuthenticated && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Add ${result.name} to a list`}
+                      onClick={() =>
+                        setAddTarget({ recipeId: result.recipeId!, name: result.name })
+                      }
+                    >
+                      <ListPlus />
+                      <span className="hidden sm:inline">List</span>
+                    </Button>
+                  )}
                   {result.recipeId && (
                     <Button size="sm" variant="ghost" asChild>
                       <Link to={`/recipes/${result.recipeId}`} aria-label={`Recipe for ${result.name}`}>
@@ -231,6 +269,17 @@ export function SearchPage() {
             </p>
           )}
         </>
+      )}
+
+      {/* One dialog for the whole page rather than one per row, so a long result list does not
+          mount fifty of them. */}
+      {addTarget && (
+        <AddToListDialog
+          open
+          onOpenChange={(next) => !next && setAddTarget(null)}
+          recipeId={addTarget.recipeId}
+          recipeName={addTarget.name}
+        />
       )}
     </div>
   )
