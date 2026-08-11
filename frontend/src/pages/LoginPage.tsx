@@ -1,8 +1,9 @@
 import * as React from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { ApiError } from '@/lib/api'
+import { landingPathFor } from '@/lib/secretAccess'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -10,8 +11,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 
 export function LoginPage() {
-  const { login, isAuthenticated, initialising } = useAuth()
-  const navigate = useNavigate()
+  const { login, user, isAuthenticated, initialising } = useAuth()
   const location = useLocation()
 
   const [username, setUsername] = React.useState('')
@@ -19,8 +19,15 @@ export function LoginPage() {
   const [error, setError] = React.useState<ApiError | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
 
-  const redirectTo = (location.state as { from?: Location } | null)?.from?.pathname ?? '/search'
+  // A page the user was actually trying to reach wins over any default landing: they were sent
+  // here by the route guard and should end up where they were going.
+  const redirectTo =
+    (location.state as { from?: Location } | null)?.from?.pathname ?? landingPathFor(user)
 
+  // Redirecting declaratively rather than calling navigate() after login is deliberate. The
+  // landing depends on which account signed in, and `user` is still null on the line after
+  // `await login(...)` - the context has not re-rendered yet. Letting this run on the next render
+  // means the decision is made with the resolved user rather than a stale one.
   if (!initialising && isAuthenticated) return <Navigate to={redirectTo} replace />
 
   async function handleSubmit(event: React.FormEvent) {
@@ -29,7 +36,6 @@ export function LoginPage() {
     setError(null)
     try {
       await login({ username, password })
-      navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err : new ApiError(0, 'Could not reach the server.'))
     } finally {

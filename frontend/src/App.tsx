@@ -9,6 +9,7 @@ import { CraftCostPage } from '@/pages/CraftCostPage'
 import { SavedCraftsPage } from '@/pages/SavedCraftsPage'
 import { SavedCraftDetailPage } from '@/pages/SavedCraftDetailPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { SecretPage } from '@/pages/SecretPage'
 import { AdminPage } from '@/pages/AdminPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
@@ -44,6 +45,8 @@ export function App() {
           <Route path="/lists" element={<SavedCraftsPage />} />
           <Route path="/lists/:savedCraftId" element={<SavedCraftDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          {/* Deliberately absent from the navigation; SecretPage gates on the account itself. */}
+          <Route path="/secret" element={<SecretPage />} />
         </Route>
 
         <Route path="/saved-crafts" element={<Navigate to="/lists" replace />} />

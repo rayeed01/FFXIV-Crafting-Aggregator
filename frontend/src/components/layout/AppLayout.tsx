@@ -2,6 +2,7 @@ import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
   Bookmark,
   Calculator,
+  Image as ImageIcon,
   LogOut,
   Moon,
   Search,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
+import { SECRET_PAGE_LABEL, SECRET_PAGE_PATH, canSeeSecretPage } from '@/lib/secretAccess'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -55,7 +57,14 @@ function ThemeToggle() {
 export function AppLayout() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth()
 
-  const visibleNav = NAV.filter((item) => !item.requiresAuth || isAuthenticated)
+  // Appended rather than filtered from NAV, because its visibility depends on which account is
+  // signed in rather than merely on being signed in at all.
+  const visibleNav = [
+    ...NAV.filter((item) => !item.requiresAuth || isAuthenticated),
+    ...(canSeeSecretPage(user)
+      ? [{ to: SECRET_PAGE_PATH, label: SECRET_PAGE_LABEL, icon: ImageIcon }]
+      : []),
+  ]
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
