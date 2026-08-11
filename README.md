@@ -103,14 +103,3 @@ cd backend  && ./mvnw test -Pintegration   # adds live Universalis tests
 cd frontend && npm run build        # tsc + vite build
 cd frontend && npm run lint
 ```
-
-Both projects document their reasoning in doc comments above functions rather than inline. If a
-decision looks arbitrary, the docblock usually explains what broke when it was done the other way.
-
-### IntelliJ
-
-Open `backend/pom.xml` as the Maven project. A project configured against the pre-split layout has
-stale module paths, and the symptom is misleading: IntelliJ decides the source root is
-`backend/src`, computes every package as `main.java.com...`, and offers a quick-fix that rewrites
-your `package` statements to match. Decline it — the prompt means the source root is wrong, not
-the code.

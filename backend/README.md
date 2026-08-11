@@ -182,4 +182,3 @@ enumeration by id.
 - `IllegalArgumentException` is mapped to 400, but `NumberFormatException` extends it — a
   server-side bug can be reported to the caller as bad input. A dedicated exception would be
   cleaner.
-- Item and recipe search uses `LIKE '%term%'`, which cannot use an index. Fine at 14k rows.

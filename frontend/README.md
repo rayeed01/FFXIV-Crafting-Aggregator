@@ -94,16 +94,3 @@ implement their own dark mode. Remove it if you would rather the extension take 
 **Admin nav is presentation only.** It is hidden unless `/users/me` reports `ADMIN`, but the
 backend enforces the role regardless of what the menu shows.
 
-## Code style
-
-Documentation goes in doc comments above functions and components, not inside their bodies. Where
-a line looks arbitrary, the docblock explains what broke when it was written the other way — the
-column widths in `CraftCostTree`, the `min-h-0` in the add-recipes dialog, and the dependency array
-in `SavedCraftForm` are all load-bearing for reasons that are not visible locally.
-
-## Known advisory
-
-`npm audit` reports GHSA-qwww-vcr4-c8h2 against `react-router`. It concerns **RSC mode** — server
-components with server actions. This is a client-only SPA against a separate API, so the vulnerable
-path is not reachable. The installed version is already the latest published, and
-`npm audit fix --force` would downgrade to an older major.
